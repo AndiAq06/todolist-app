@@ -241,7 +241,7 @@ export default function Home() {
   };
 
   const handleSaveTask = async (taskData: Partial<Task>) => {
-    if (editingTask) {
+    if (editingTask && editingTask.id) {
       // Update
       const res = await fetch(`/api/tasks/${editingTask.id}`, {
         method: 'PUT',
@@ -309,11 +309,11 @@ export default function Home() {
     });
   };
 
-  // Simple Add Task handler for dashboard
-  const handleSimpleAddTask = async (title: string, category?: string) => {
+  // Simple Add Task handler for dashboard & calendar
+  const handleSimpleAddTask = async (title: string, category?: string, dueDate?: string) => {
     await handleSaveTask({
       title,
-      dueDate: todayStr || new Date().toISOString().split('T')[0],
+      dueDate: dueDate || todayStr || new Date().toISOString().split('T')[0],
       priority: 'normal',
       category: category || 'Design Stride',
       status: 'todo',
@@ -776,7 +776,7 @@ export default function Home() {
                 tasks={tasks}
                 onOpenTaskDetail={setSelectedTaskForDetail}
                 onAddTaskForDate={(dateStr) => {
-                  setEditingTask(null);
+                  setEditingTask({ dueDate: dateStr } as any);
                   setIsTaskFormOpen(true);
                 }}
               />

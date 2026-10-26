@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar as CalendarIcon,
   Check,
+  ChevronLeft,
   ChevronRight,
   Clock,
   Flame,
@@ -19,8 +20,14 @@ import {
   Smile,
   ArrowUpRight,
   CheckCircle2,
+  Download,
+  ExternalLink,
+  CalendarDays,
+  X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { format, isSameDay, addMonths, subMonths } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
 import { Task, GoalItem, ReminderItem, Category } from '@/types';
 import { DEFAULT_MONTH_GOALS, DEFAULT_WEEK_GOALS, DEFAULT_REMINDERS } from '@/lib/constants';
 
@@ -31,7 +38,7 @@ interface ModernDashboardProps {
   reminders: ReminderItem[];
   categories: Category[];
   onToggleTask: (task: Task) => void;
-  onAddTask: (title: string, category?: string) => void;
+  onAddTask: (title: string, category?: string, dueDate?: string) => void;
   onToggleGoal: (id: string, type: 'month' | 'week') => void;
   onToggleReminder: (id: string) => void;
   onOpenTaskDetail: (task: Task) => void;
@@ -53,7 +60,14 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
 }) => {
   // Day period filter: Morning, Afternoon, Evening
   const [dayPeriod, setDayPeriod] = useState<'morning' | 'afternoon' | 'evening'>('morning');
-  const [selectedCalendarDay, setSelectedCalendarDay] = useState(15);
+  
+  // Real dynamic calendar state (defaults to current real month & date)
+  const [calendarMonthDate, setCalendarMonthDate] = useState<Date>(new Date());
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(new Date().getDate());
+  const [calendarNewTaskTitle, setCalendarNewTaskTitle] = useState('');
+  const [isAddingCalendarTask, setIsAddingCalendarTask] = useState(false);
+  const [showCalendarSyncModal, setShowCalendarSyncModal] = useState(false);
+
   const [newUpcomingTitle, setNewUpcomingTitle] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
@@ -175,30 +189,169 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
     return list.slice(0, 6);
   }, [activeTasks]);
 
-  // Calendar dates mock generator for miniature view (Days 1 to 31)
+  // ==========================================
+  // REAL DYNAMIC CALENDAR STATE & COMPUTATIONS
+  // ==========================================
+  const now = new Date();
+  const calYear = calendarMonthDate.getFullYear();
+  const calMonth = calendarMonthDate.getMonth();
+  const isViewingCurrentMonth = now.getFullYear() === calYear && now.getMonth() === calMonth;
+  const currentMonthPrefix = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
+  const todayDateStr = format(now, 'yyyy-MM-dd');
+
+  // Month names
+  const monthAbbr = format(calendarMonthDate, 'MMM').toUpperCase();
+  const monthFullName = format(calendarMonthDate, 'MMMM yyyy', { locale: idLocale });
+
+  // Tasks in currently viewed month
+  const monthTasks = useMemo(() => {
+    return tasks.filter(
+      (t) => !t.isDeleted && !t.isArchived && t.dueDate && t.dueDate.startsWith(currentMonthPrefix)
+    );
+  }, [tasks, currentMonthPrefix]);
+
+  const monthCompletedTasks = useMemo(() => {
+    return monthTasks.filter((t) => t.status === 'completed');
+  }, [monthTasks]);
+
+  const monthOverdueTasks = useMemo(() => {
+    return monthTasks.filter((t) => t.status !== 'completed' && t.dueDate < todayDateStr);
+  }, [monthTasks, todayDateStr]);
+
+  const monthProgressPercent = useMemo(() => {
+    if (monthTasks.length === 0) return 100;
+    return Math.round((monthCompletedTasks.length / monthTasks.length) * 100);
+  }, [monthTasks, monthCompletedTasks]);
+
+  // Calendar dates generator for current real month (SUN to SAT)
   const calendarDays = useMemo(() => {
-    const days = [];
-    // 2 empty padding cells for month offset
-    days.push({ day: null, key: 'empty-1' });
-    days.push({ day: null, key: 'empty-2' });
-    for (let i = 1; i <= 31; i++) {
+    const days: Array<{
+      day: number | null;
+      key: string;
+      dateStr?: string;
+      isToday?: boolean;
+      hasTasks?: boolean;
+      taskCount?: number;
+      hasOverdue?: boolean;
+      isAllCompleted?: boolean;
+    }> = [];
+
+    // Sunday = 0, Monday = 1 ... Saturday = 6
+    const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
+    const totalDaysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+    // 1. Leading empty padding cells for month offset
+    for (let p = 0; p < firstDayOfWeek; p++) {
+      days.push({ day: null, key: `empty-${p}` });
+    }
+
+    // 2. Exact days of this month
+    for (let d = 1; d <= totalDaysInMonth; d++) {
+      const dateStr = `${currentMonthPrefix}-${String(d).padStart(2, '0')}`;
+      const isToday = isViewingCurrentMonth && now.getDate() === d;
+      const dayTasks = tasks.filter(
+        (t) => !t.isDeleted && !t.isArchived && t.dueDate === dateStr
+      );
+      const hasOverdue = dayTasks.some((t) => t.status !== 'completed' && dateStr < todayDateStr);
+      const isAllCompleted = dayTasks.length > 0 && dayTasks.every((t) => t.status === 'completed');
+
       days.push({
-        day: i,
-        key: `day-${i}`,
-        hasEvent: [3, 8, 14, 18, 24, 29].includes(i),
-        isOverdue: i === 14,
-        isValentine: i === 14,
+        day: d,
+        key: `day-${d}`,
+        dateStr,
+        isToday,
+        hasTasks: dayTasks.length > 0,
+        taskCount: dayTasks.length,
+        hasOverdue,
+        isAllCompleted,
       });
     }
-    return days;
-  }, []);
 
-  const handleSyncCalendar = () => {
-    setSyncStatus('Sinkronisasi...');
-    setTimeout(() => {
-      setSyncStatus('Tersinkronisasi ✓');
-      setTimeout(() => setSyncStatus(null), 2500);
-    }, 1200);
+    return days;
+  }, [calYear, calMonth, isViewingCurrentMonth, currentMonthPrefix, todayDateStr, tasks]);
+
+  // Selected date tasks
+  const selectedDateStr = `${currentMonthPrefix}-${String(selectedCalendarDay).padStart(2, '0')}`;
+  const selectedDayTasks = useMemo(() => {
+    return tasks.filter(
+      (t) => !t.isDeleted && !t.isArchived && t.dueDate === selectedDateStr
+    );
+  }, [tasks, selectedDateStr]);
+
+  const handlePrevMonth = () => {
+    setCalendarMonthDate((prev) => subMonths(prev, 1));
+    setSelectedCalendarDay(1);
+  };
+
+  const handleNextMonth = () => {
+    setCalendarMonthDate((prev) => addMonths(prev, 1));
+    setSelectedCalendarDay(1);
+  };
+
+  const handleResetToToday = () => {
+    const today = new Date();
+    setCalendarMonthDate(today);
+    setSelectedCalendarDay(today.getDate());
+  };
+
+  const handleAddCalendarTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!calendarNewTaskTitle.trim()) return;
+    onAddTask(calendarNewTaskTitle.trim(), 'Design Stride', selectedDateStr);
+    setCalendarNewTaskTitle('');
+    setIsAddingCalendarTask(false);
+  };
+
+  // Export .ICS file for Google Calendar / Apple / Outlook
+  const handleExportICS = () => {
+    const activeTasksWithDates = tasks.filter((t) => !t.isDeleted && !t.isArchived && t.dueDate);
+    let icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Todolist App//Productivity//ID',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH'
+    ];
+
+    activeTasksWithDates.forEach((t) => {
+      const dt = t.dueDate.replace(/-/g, '');
+      icsContent.push('BEGIN:VEVENT');
+      icsContent.push(`UID:task-${t.id}@todolist.app`);
+      icsContent.push(`SUMMARY:${t.title}`);
+      icsContent.push(`DESCRIPTION:${(t.description || '').replace(/\n/g, ' ')}`);
+      icsContent.push(`DTSTART;VALUE=DATE:${dt}`);
+      icsContent.push(`DTEND;VALUE=DATE:${dt}`);
+      icsContent.push(`STATUS:${t.status === 'completed' ? 'COMPLETED' : 'CONFIRMED'}`);
+      icsContent.push('END:VEVENT');
+    });
+
+    icsContent.push('END:VCALENDAR');
+
+    const blob = new Blob([icsContent.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `todolist-agenda-${format(new Date(), 'yyyyMMdd')}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setSyncStatus('File .ICS Terunduh ✓');
+    setTimeout(() => setSyncStatus(null), 3000);
+    setShowCalendarSyncModal(false);
+  };
+
+  // Open Google Calendar Web pre-filled
+  const handleOpenGoogleCalendar = () => {
+    const dateFormatted = selectedDateStr.replace(/-/g, '');
+    const firstTask = selectedDayTasks[0];
+    const title = firstTask ? firstTask.title : 'Agenda Todolist App';
+    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+      title
+    )}&dates=${dateFormatted}/${dateFormatted}&details=${encodeURIComponent('Dibuat dari Todolist App')}`;
+    window.open(gcalUrl, '_blank');
+    setShowCalendarSyncModal(false);
   };
 
   const handleAddUpcomingTask = (e: React.FormEvent) => {
@@ -232,16 +385,52 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
             {/* Month & Target Progress Bar */}
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-2">
-                <span className="text-xl font-black tracking-tight text-gray-900 dark:text-gray-100">
-                  JAN
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FF5A1F] text-white">
-                  Overdue
-                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handlePrevMonth}
+                    title="Bulan sebelumnya"
+                    className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-xl font-black tracking-tight text-gray-900 dark:text-gray-100">
+                    {monthAbbr}
+                  </span>
+                  <button
+                    onClick={handleNextMonth}
+                    title="Bulan berikutnya"
+                    className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+
+                {/* Overdue / Month Status Badge */}
+                {monthOverdueTasks.length > 0 ? (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FF5A1F] text-white">
+                    {monthOverdueTasks.length} Overdue
+                  </span>
+                ) : isViewingCurrentMonth ? (
+                  <button
+                    onClick={handleResetToToday}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-[#FF5A1F] dark:bg-orange-950/50 dark:text-orange-300 hover:bg-orange-200 transition"
+                  >
+                    Hari Ini
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleResetToToday}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 hover:bg-[#FF5A1F] hover:text-white transition"
+                    title="Kembali ke bulan ini"
+                  >
+                    {calYear}
+                  </button>
+                )}
               </div>
+
               <div className="text-right">
                 <span className="text-xs font-black text-gray-900 dark:text-gray-100 block">
-                  60%
+                  {monthProgressPercent}%
                 </span>
                 <span className="text-[9px] text-gray-400">
                   meet my goal
@@ -249,8 +438,8 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
               </div>
             </div>
 
-            {/* Miniature Calendar Grid */}
-            <div className="bg-gray-50/70 dark:bg-gray-800/40 rounded-2xl p-2.5 mb-4">
+            {/* Dynamic Calendar Grid */}
+            <div className="bg-gray-50/70 dark:bg-gray-800/40 rounded-2xl p-2.5 mb-3">
               <div className="grid grid-cols-7 text-center mb-2 text-[9px] font-bold text-gray-400 uppercase tracking-wider">
                 <span>SUN</span>
                 <span>MON</span>
@@ -264,41 +453,234 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
               <div className="grid grid-cols-7 gap-1 text-center text-xs">
                 {calendarDays.map((item) => {
                   if (!item.day) {
-                    return <div key={item.key} className="h-6" />;
+                    return <div key={item.key} className="h-6 w-6 mx-auto" />;
                   }
 
                   const isSelected = item.day === selectedCalendarDay;
+                  const isToday = Boolean(item.isToday);
 
                   return (
                     <button
                       key={item.key}
-                      onClick={() => setSelectedCalendarDay(item.day)}
-                      className={`h-6 w-6 mx-auto rounded-full flex flex-col items-center justify-center text-[10px] font-medium relative transition ${
+                      onClick={() => setSelectedCalendarDay(item.day!)}
+                      title={`${item.day} ${monthFullName}${item.taskCount ? ` (${item.taskCount} tugas)` : ''}`}
+                      className={`h-6 w-6 mx-auto rounded-full flex flex-col items-center justify-center text-[10px] relative transition active:scale-95 ${
                         isSelected
-                          ? 'bg-[#FF5A1F] text-white font-bold shadow-sm'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-700/60'
+                          ? 'bg-[#FF5A1F] text-white font-bold shadow-md shadow-[#FF5A1F]/30'
+                          : isToday
+                          ? 'ring-1.5 ring-[#FF5A1F] text-[#FF5A1F] font-black bg-orange-50/50 dark:bg-orange-950/20'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-700/60 font-medium'
                       }`}
                     >
                       <span>{item.day}</span>
-                      {item.hasEvent && !isSelected && (
-                        <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-[#FF5A1F]" />
+                      {item.hasTasks && !isSelected && (
+                        <span
+                          className={`absolute bottom-0.5 w-1 h-1 rounded-full ${
+                            item.hasOverdue
+                              ? 'bg-rose-500'
+                              : item.isAllCompleted
+                              ? 'bg-emerald-500'
+                              : 'bg-[#FF5A1F]'
+                          }`}
+                        />
                       )}
                     </button>
                   );
                 })}
               </div>
             </div>
+
+            {/* Selected Date Agenda Mini-Box */}
+            <div className="bg-gray-50/80 dark:bg-gray-800/50 rounded-2xl p-2.5 mb-3 border border-gray-100 dark:border-gray-700/50">
+              <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-gray-200/50 dark:border-gray-700/50">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-gray-800 dark:text-gray-200">
+                    📅 {selectedCalendarDay} {monthAbbr} {calYear}
+                  </span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                    {selectedDayTasks.length} agenda
+                  </span>
+                </div>
+                <button
+                  onClick={() => onSelectTab('calendar')}
+                  title="Buka tampilan kalender penuh"
+                  className="text-[10px] font-bold text-[#FF5A1F] hover:underline flex items-center gap-0.5"
+                >
+                  <span>Kalender Penuh</span>
+                  <ArrowUpRight size={11} />
+                </button>
+              </div>
+
+              {/* Task list for selected date */}
+              {selectedDayTasks.length === 0 ? (
+                <div className="py-1.5 text-center">
+                  <p className="text-[10px] text-gray-400">Tidak ada agenda pada tanggal ini.</p>
+                  {!isAddingCalendarTask ? (
+                    <button
+                      onClick={() => setIsAddingCalendarTask(true)}
+                      className="mt-1 text-[10px] font-bold text-[#FF5A1F] hover:underline"
+                    >
+                      + Tambah Tugas di Tanggal Ini
+                    </button>
+                  ) : (
+                    <form onSubmit={handleAddCalendarTask} className="mt-1.5 flex gap-1">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={calendarNewTaskTitle}
+                        onChange={(e) => setCalendarNewTaskTitle(e.target.value)}
+                        placeholder="Nama tugas baru..."
+                        className="flex-1 text-[10px] px-2 py-1 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#FF5A1F]"
+                      />
+                      <button
+                        type="submit"
+                        className="px-2.5 py-1 bg-[#FF5A1F] hover:bg-[#e54c14] text-white text-[10px] font-bold rounded-lg transition"
+                      >
+                        Simpan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingCalendarTask(false)}
+                        className="px-2 py-1 text-gray-400 hover:text-gray-600 text-[10px]"
+                      >
+                        ✕
+                      </button>
+                    </form>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1 max-h-[85px] overflow-y-auto pr-0.5">
+                  {selectedDayTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="flex items-center justify-between gap-1.5 p-1 rounded-lg hover:bg-white dark:hover:bg-gray-700/60 transition group text-left"
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => onToggleTask(task)}
+                          className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center flex-shrink-0 transition ${
+                            task.status === 'completed'
+                              ? 'bg-[#FF5A1F] border-[#FF5A1F] text-white'
+                              : 'border-gray-300 dark:border-gray-600 hover:border-[#FF5A1F]'
+                          }`}
+                        >
+                          {task.status === 'completed' && <Check size={10} strokeWidth={3} />}
+                        </button>
+                        <span
+                          onClick={() => onOpenTaskDetail(task)}
+                          className={`text-[10px] font-semibold truncate cursor-pointer hover:text-[#FF5A1F] ${
+                            task.status === 'completed'
+                              ? 'line-through text-gray-400'
+                              : 'text-gray-800 dark:text-gray-200'
+                          }`}
+                        >
+                          {task.title}
+                        </span>
+                      </div>
+                      <span className="text-[9px] font-medium text-gray-400 flex-shrink-0">
+                        {task.startTime || task.category}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Sync Button */}
           <button
-            onClick={handleSyncCalendar}
+            onClick={() => setShowCalendarSyncModal(true)}
             className="w-full py-2 px-3 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-xs font-semibold flex items-center justify-center gap-2 transition active:scale-[0.98]"
           >
             <RefreshCw size={13} className={syncStatus ? 'animate-spin text-[#FF5A1F]' : 'text-gray-400'} />
             <span>{syncStatus || 'Sync with google calendar'}</span>
           </button>
         </div>
+
+        {/* MODAL GOOGLE CALENDAR SYNC */}
+        {showCalendarSyncModal && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white dark:bg-[#1a1b20] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl">
+              <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-orange-100 dark:bg-orange-950/40 text-[#FF5A1F]">
+                    <CalendarDays size={18} />
+                  </div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                    Google Calendar Sync
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowCalendarSyncModal(false)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                Pilih opsi sinkronisasi agenda dan tugas Todolist App ke kalender Anda:
+              </p>
+
+              <div className="space-y-2.5">
+                <button
+                  onClick={handleExportICS}
+                  className="w-full p-3 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-[#FF5A1F] dark:hover:border-[#FF5A1F] bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between transition group text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Download size={16} className="text-[#FF5A1F]" />
+                    <div>
+                      <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
+                        Unduh File Kalender (.ICS)
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        Bisa diimpor langsung ke Google Calendar & Apple Calendar
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleOpenGoogleCalendar}
+                  className="w-full p-3 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-[#FF5A1F] dark:hover:border-[#FF5A1F] bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between transition group text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <ExternalLink size={16} className="text-[#FF5A1F]" />
+                    <div>
+                      <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
+                        Buka Google Calendar Web
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        Buka event di kalender Google di browser
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowCalendarSyncModal(false);
+                    onSelectTab('calendar');
+                  }}
+                  className="w-full p-3 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-[#FF5A1F] dark:hover:border-[#FF5A1F] bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-between transition group text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <CalendarDays size={16} className="text-[#FF5A1F]" />
+                    <div>
+                      <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
+                        Lihat Tampilan Kalender Penuh
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        Tampilan kalender bulanan, mingguan & agenda lengkap
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* CARD 2: My day (Status, Energy Ring & Stats) */}
         <div className="lg:col-span-4 bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between">
