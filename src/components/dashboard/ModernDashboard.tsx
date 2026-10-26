@@ -367,10 +367,10 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
       {/* ============================================================== */}
       {/* TOP ROW: 3 Columns Grid (Monthly Schedule | My day | Upcoming) */}
       {/* ============================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
         
         {/* CARD 1: Monthly Schedule (Calendar View) */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between h-full">
           <div>
             {/* Header */}
             <div className="text-center mb-3">
@@ -683,7 +683,7 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
         )}
 
         {/* CARD 2: My day (Status, Energy Ring & Stats) */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between h-full">
           <div>
             {/* Header Title */}
             <h2 className="text-base font-black text-gray-900 dark:text-gray-100 text-center mb-3">
@@ -795,7 +795,7 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
         </div>
 
         {/* CARD 3: Upcoming tasks (Checklist Widget) */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between h-full">
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-black text-gray-900 dark:text-gray-100">
@@ -887,14 +887,13 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* BOTTOM ROW: Goals, Tasks Reminders, Pomodoro Timer & Affirmation */}
+      {/* ROW 2: Goals & Reminders (3 Columns, Perfect Straight Horizontal Line) */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
         
-        {/* COLUMN 1: Month Goals & Well done Card (lg:col-span-4) */}
-        <div className="lg:col-span-4 space-y-5">
-          {/* Month goals Card */}
-          <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        {/* CARD 4: Month goals */}
+        <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between h-full">
+          <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-black text-gray-900 dark:text-gray-100">
                 Month goals:
@@ -933,56 +932,28 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
               ))}
             </div>
           </div>
-
-          {/* Well done! Motivation Card */}
-          <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex items-center justify-between">
-            <div className="space-y-1">
-              <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">
-                Well done!
-              </h3>
-              <p className="text-[11px] text-gray-400 max-w-[150px]">
-                You completed your morning routine today
-              </p>
-              <button
-                onClick={() => onSelectTab('habits')}
-                className="text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:text-[#FF5A1F] flex items-center gap-1 pt-1"
-              >
-                View details →
-              </button>
-            </div>
-
-            {/* Friendly Avatar Vector Illustration */}
-            <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center text-3xl shadow-inner">
-              🧘
-            </div>
-          </div>
         </div>
 
-        {/* COLUMN 2: Tasks Reminders & Orange Pomodoro Timer (lg:col-span-4) */}
-        <div className="lg:col-span-4 space-y-5">
-          {/* Tasks Reminders(3) Card */}
-          <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        {/* CARD 5: Tasks Reminders(3) */}
+        <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between h-full">
+          <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-black text-gray-900 dark:text-gray-100">
                 Tasks Reminders({reminders.length})
               </h2>
             </div>
 
-            {/* 3 Horizontal Reminder Cards */}
-            <div className="grid grid-cols-3 gap-2.5 overflow-x-auto pb-1">
-              {reminders.map((reminder) => (
+            {/* 3 Horizontal Reminder Cards filling width */}
+            <div className="grid grid-cols-3 gap-2.5">
+              {reminders.slice(0, 3).map((reminder) => (
                 <div
                   key={reminder.id}
-                  className="bg-gray-50/90 dark:bg-gray-800/60 rounded-2xl p-2.5 flex flex-col justify-between h-24 border border-gray-100 dark:border-gray-700/60"
+                  className="bg-gray-50/90 dark:bg-gray-800/60 rounded-2xl p-2.5 flex flex-col justify-between h-28 border border-gray-100 dark:border-gray-700/60 transition hover:border-gray-300 dark:hover:border-gray-600"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] text-gray-400">...</span>
-                  </div>
-
-                  <p className="text-[11px] font-bold text-gray-800 dark:text-gray-200 leading-tight line-clamp-2">
+                  <span className="text-[9px] text-gray-400">...</span>
+                  <p className="text-[11px] font-bold text-gray-800 dark:text-gray-200 leading-tight line-clamp-2 my-auto">
                     {reminder.title}
                   </p>
-
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-[10px] text-gray-400 font-medium">
                       {reminder.time}
@@ -1003,60 +974,11 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
               ))}
             </div>
           </div>
-
-          {/* VIBRANT ORANGE POMODORO TIMER WIDGET (Matching the screenshot!) */}
-          <div className="bg-[#FF5A1F] rounded-3xl p-5 text-white shadow-lg shadow-[#FF5A1F]/25 flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-white/90">
-                  Pomodoro timer
-                </span>
-                <button
-                  onClick={() => setPomodoroSeconds((prev) => prev + 5 * 60)}
-                  className="text-[10px] font-bold bg-white/20 hover:bg-white/30 text-white px-2 py-0.5 rounded-full transition"
-                >
-                  + Add
-                </button>
-              </div>
-
-              {/* Big bold timer */}
-              <div className="text-4xl font-black tracking-tight text-white font-mono">
-                {formatPomodoroTime(pomodoroSeconds)}
-              </div>
-            </div>
-
-            {/* Play / Pause Toggle Pill Button (White with black icon) */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsPomodoroRunning(!isPomodoroRunning)}
-                className="w-12 h-12 rounded-2xl bg-white text-gray-900 hover:scale-105 active:scale-95 flex items-center justify-center shadow-md transition"
-                title={isPomodoroRunning ? 'Jeda Timer' : 'Mulai Timer'}
-              >
-                {isPomodoroRunning ? (
-                  <Pause size={18} fill="currentColor" />
-                ) : (
-                  <Play size={18} fill="currentColor" className="ml-0.5" />
-                )}
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsPomodoroRunning(false);
-                  setPomodoroSeconds(10 * 60 + 45);
-                }}
-                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
-                title="Reset Timer"
-              >
-                <RotateCcw size={13} />
-              </button>
-            </div>
-          </div>
         </div>
 
-        {/* COLUMN 3: Week Goals & Daily Affirmation (lg:col-span-4) */}
-        <div className="lg:col-span-4 space-y-5">
-          {/* Week goals Card */}
-          <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        {/* CARD 6: Week goals */}
+        <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between h-full">
+          <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-black text-gray-900 dark:text-gray-100">
                 Week goals:
@@ -1095,20 +1017,99 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
               ))}
             </div>
           </div>
+        </div>
 
-          {/* Daily Affirmation Card */}
-          <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">
-                Daily Affirmation
-              </h3>
-              <Sparkles size={14} className="text-[#FF5A1F]" />
+      </div>
+
+      {/* ========================================================================= */}
+      {/* ROW 3: Motivation, Pomodoro Timer & Affirmation (Perfect Straight Line) */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
+        
+        {/* CARD 7: Well done! Motivation Card */}
+        <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex items-center justify-between h-full min-h-[105px]">
+          <div className="space-y-1">
+            <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">
+              Well done!
+            </h3>
+            <p className="text-[11px] text-gray-400 max-w-[170px]">
+              You completed your morning routine today
+            </p>
+            <button
+              onClick={() => onSelectTab('habits')}
+              className="text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:text-[#FF5A1F] flex items-center gap-1 pt-1"
+            >
+              View details →
+            </button>
+          </div>
+
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center text-3xl shadow-inner flex-shrink-0">
+            🧘
+          </div>
+        </div>
+
+        {/* CARD 8: Vibrant Orange Pomodoro Timer Widget */}
+        <div className="bg-[#FF5A1F] rounded-3xl p-5 text-white shadow-lg shadow-[#FF5A1F]/25 flex items-center justify-between h-full min-h-[105px]">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-semibold text-white/90">
+                Pomodoro timer
+              </span>
+              <button
+                onClick={() => setPomodoroSeconds((prev) => prev + 5 * 60)}
+                className="text-[10px] font-bold bg-white/20 hover:bg-white/30 text-white px-2 py-0.5 rounded-full transition"
+              >
+                + Add
+              </button>
             </div>
 
-            <p className="text-xs font-medium text-gray-600 dark:text-gray-300 leading-relaxed italic">
-              &quot;Why stop when today might be the day you win?&quot;
-            </p>
+            <div className="text-3xl sm:text-4xl font-black tracking-tight text-white font-mono">
+              {formatPomodoroTime(pomodoroSeconds)}
+            </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsPomodoroRunning(!isPomodoroRunning)}
+              className="w-12 h-12 rounded-2xl bg-white text-gray-900 hover:scale-105 active:scale-95 flex items-center justify-center shadow-md transition"
+              title={isPomodoroRunning ? 'Jeda Timer' : 'Mulai Timer'}
+            >
+              {isPomodoroRunning ? (
+                <Pause size={18} fill="currentColor" />
+              ) : (
+                <Play size={18} fill="currentColor" className="ml-0.5" />
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                setIsPomodoroRunning(false);
+                setPomodoroSeconds(10 * 60 + 45);
+              }}
+              className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+              title="Reset Timer"
+            >
+              <RotateCcw size={13} />
+            </button>
+          </div>
+        </div>
+
+        {/* CARD 9: Daily Affirmation */}
+        <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between h-full min-h-[105px]">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">
+              Daily Affirmation
+            </h3>
+            <Sparkles size={14} className="text-[#FF5A1F]" />
+          </div>
+
+          <p className="text-xs font-medium text-gray-600 dark:text-gray-300 leading-relaxed italic my-auto py-1">
+            &quot;Why stop when today might be the day you win?&quot;
+          </p>
+
+          <span className="text-[10px] text-gray-400 font-semibold">
+            Tetap fokus dan konsisten ✨
+          </span>
         </div>
 
       </div>
