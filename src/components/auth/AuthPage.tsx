@@ -17,6 +17,8 @@ import {
 import confetti from 'canvas-confetti';
 import { CatLogo } from '@/components/layout/CatLogo';
 
+import { saveVaultAccount, getVaultAccount, getLastVaultAccount } from '@/lib/client-vault';
+
 interface AuthPageProps {
   onAuthSuccess: (user: any) => void;
   isDarkMode: boolean;
@@ -36,6 +38,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const lastUser = getLastVaultAccount();
+    if (lastUser?.email) {
+      setEmail(lastUser.email);
+      if (lastUser.name) setName(lastUser.name);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +70,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
     try {
       const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-      const body = mode === 'register' ? { name, email, password } : { email, password };
+      const cachedAccount = getVaultAccount(email);
+      const body =
+        mode === 'register'
+          ? { name, email, password }
+          : { email, password, cachedAccount };
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -72,6 +86,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
       if (!res.ok) {
         throw new Error(data.error || 'Terjadi kesalahan saat otentikasi.');
+      }
+
+      // Save user to permanent client vault so account never disappears
+      if (data.user) {
+        saveVaultAccount(data.user);
       }
 
       confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
@@ -95,6 +114,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+
+      if (data.user) {
+        saveVaultAccount(data.user);
+      }
 
       confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
       onAuthSuccess(data.user);

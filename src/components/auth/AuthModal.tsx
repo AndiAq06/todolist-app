@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Lock, Mail, User, Eye, EyeOff, Sparkles, LogIn, UserPlus, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { saveVaultAccount, getVaultAccount, getLastVaultAccount } from '@/lib/client-vault';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -25,6 +26,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      const lastUser = getLastVaultAccount();
+      if (lastUser?.email && !email) {
+        setEmail(lastUser.email);
+        if (lastUser.name && !name) setName(lastUser.name);
+      }
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -51,7 +62,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-      const body = mode === 'register' ? { name, email, password } : { email, password };
+      const cachedAccount = getVaultAccount(email);
+      const body =
+        mode === 'register'
+          ? { name, email, password }
+          : { email, password, cachedAccount };
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -63,6 +78,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       if (!res.ok) {
         throw new Error(data.error || 'Terjadi kesalahan saat otentikasi.');
+      }
+
+      if (data.user) {
+        saveVaultAccount(data.user);
       }
 
       confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
@@ -89,6 +108,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+
+      if (data.user) {
+        saveVaultAccount(data.user);
+      }
 
       confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
       onAuthSuccess(data.user);

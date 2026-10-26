@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase, saveDatabase, logActivity } from '@/lib/server-storage';
-import { hashPassword, createSessionToken, AUTH_COOKIE_NAME } from '@/lib/auth';
+import { hashPassword, createSessionToken, AUTH_COOKIE_NAME, AUTH_COOKIE_OPTIONS } from '@/lib/auth';
 import { UserAccount } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -61,16 +61,14 @@ export async function POST(req: NextRequest) {
         title: newUser.title,
         avatarUrl: newUser.avatarUrl,
         dailyGoal: newUser.dailyGoal,
+        passwordHash: newUser.passwordHash,
       },
     });
 
     response.cookies.set({
       name: AUTH_COOKIE_NAME,
       value: token,
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      ...AUTH_COOKIE_OPTIONS,
     });
 
     return response;

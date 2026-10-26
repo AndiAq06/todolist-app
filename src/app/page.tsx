@@ -30,6 +30,13 @@ import { SettingsView } from '@/components/settings/SettingsView';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { AuthPage } from '@/components/auth/AuthPage';
 import {
+  saveVaultAccount,
+  getLastVaultAccount,
+  clearLastVaultAccount,
+  saveLocalDataBackup,
+  getLocalDataBackup,
+} from '@/lib/client-vault';
+import {
   ListFilter,
   Grid,
   Columns3,
@@ -98,17 +105,89 @@ export default function Home() {
       const res = await fetch('/api/bootstrap');
       const data = await res.json();
       if (data.success) {
-        if (data.user) setCurrentUser(data.user);
-        if (data.tasks) setTasks(data.tasks);
-        if (data.habits) setHabits(data.habits);
-        if (data.journals) setJournals(data.journals);
+        let activeUser = data.user;
+
+        // Auto-heal session if serverless container wiped cookie or cold-started
+        if (!activeUser) {
+          const lastAccount = getLastVaultAccount();
+          if (lastAccount?.email && lastAccount?.id) {
+            try {
+              const restoreRes = await fetch('/api/auth/restore', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cachedAccount: lastAccount }),
+              });
+              const restoreData = await restoreRes.json();
+              if (restoreData.success && restoreData.user) {
+                activeUser = restoreData.user;
+              }
+            } catch (err) {
+              console.warn('Auto restore session failed:', err);
+            }
+          }
+        }
+
+        if (activeUser) {
+          setCurrentUser(activeUser);
+          saveVaultAccount(activeUser);
+        }
+
+        const userKey = activeUser?.id || activeUser?.email || 'default_user';
+        let curTasks = data.tasks || [];
+        let curHabits = data.habits || [];
+        let curJournals = data.journals || [];
+        let curMonthGoals = data.monthGoals || [];
+        let curWeekGoals = data.weekGoals || [];
+        let curReminders = data.reminders || [];
+        let curNotes = data.quickNotes || '';
+
+        // If server data was wiped on cold start but local client has backup, sync it to server!
+        if (curTasks.length === 0 && curMonthGoals.length === 0 && curWeekGoals.length === 0) {
+          const localBackup = getLocalDataBackup(userKey);
+          if (localBackup && ((localBackup.tasks && localBackup.tasks.length > 0) || (localBackup.monthGoals && localBackup.monthGoals.length > 0) || (localBackup.weekGoals && localBackup.weekGoals.length > 0))) {
+            try {
+              const syncRes = await fetch('/api/bootstrap', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'syncLocalBackup', payload: { backupData: localBackup } }),
+              });
+              const syncData = await syncRes.json();
+              if (syncData.success) {
+                curTasks = syncData.tasks || curTasks;
+                curHabits = syncData.habits || curHabits;
+                curJournals = syncData.journals || curJournals;
+                curMonthGoals = syncData.monthGoals || curMonthGoals;
+                curWeekGoals = syncData.weekGoals || curWeekGoals;
+                curReminders = syncData.reminders || curReminders;
+                curNotes = syncData.quickNotes || curNotes;
+              }
+            } catch (syncErr) {
+              console.warn('Sync local backup error:', syncErr);
+            }
+          }
+        }
+
+        setTasks(curTasks);
+        setHabits(curHabits);
+        setJournals(curJournals);
         if (data.profile) setProfile(data.profile);
         if (data.categories) setCategories(data.categories);
-        if (data.quickNotes) setQuickNotes(data.quickNotes);
-        if (data.monthGoals) setMonthGoals(data.monthGoals);
-        if (data.weekGoals) setWeekGoals(data.weekGoals);
-        if (data.reminders) setReminders(data.reminders);
+        setQuickNotes(curNotes);
+        setMonthGoals(curMonthGoals);
+        setWeekGoals(curWeekGoals);
+        setReminders(curReminders);
         if (data.activities) setActivities(data.activities);
+
+        // Keep local backup fresh
+        saveLocalDataBackup(userKey, {
+          tasks: curTasks,
+          habits: curHabits,
+          journals: curJournals,
+          monthGoals: curMonthGoals,
+          weekGoals: curWeekGoals,
+          reminders: curReminders,
+          quickNotes: curNotes,
+        });
       }
     } catch (err) {
       console.warn('Bootstrap load failed:', err);
@@ -226,6 +305,7 @@ export default function Home() {
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
+      clearLastVaultAccount();
       setCurrentUser(null);
       await fetchAllData();
     } catch (err) {

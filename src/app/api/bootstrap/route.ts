@@ -125,6 +125,54 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, reminders: db.reminders });
     }
 
+    if (action === 'syncLocalBackup') {
+      const { backupData } = payload;
+      if (backupData) {
+        let changed = false;
+        if (Array.isArray(backupData.tasks) && backupData.tasks.length > 0 && (!db.tasks || db.tasks.length === 0)) {
+          db.tasks = backupData.tasks;
+          changed = true;
+        }
+        if (Array.isArray(backupData.habits) && backupData.habits.length > 0 && (!db.habits || db.habits.length === 0)) {
+          db.habits = backupData.habits;
+          changed = true;
+        }
+        if (Array.isArray(backupData.journals) && backupData.journals.length > 0 && (!db.journals || db.journals.length === 0)) {
+          db.journals = backupData.journals;
+          changed = true;
+        }
+        if (Array.isArray(backupData.monthGoals) && backupData.monthGoals.length > 0 && (!db.monthGoals || db.monthGoals.length === 0)) {
+          db.monthGoals = backupData.monthGoals;
+          changed = true;
+        }
+        if (Array.isArray(backupData.weekGoals) && backupData.weekGoals.length > 0 && (!db.weekGoals || db.weekGoals.length === 0)) {
+          db.weekGoals = backupData.weekGoals;
+          changed = true;
+        }
+        if (Array.isArray(backupData.reminders) && backupData.reminders.length > 0 && (!db.reminders || db.reminders.length === 0)) {
+          db.reminders = backupData.reminders;
+          changed = true;
+        }
+        if (backupData.quickNotes && !db.quickNotes) {
+          db.quickNotes = backupData.quickNotes;
+          changed = true;
+        }
+        if (changed) {
+          saveDatabase(db);
+        }
+        return NextResponse.json({
+          success: true,
+          tasks: (db.tasks || []).filter((t) => !t.isDeleted && !t.isArchived),
+          habits: db.habits || [],
+          journals: db.journals || [],
+          monthGoals: db.monthGoals || [],
+          weekGoals: db.weekGoals || [],
+          reminders: db.reminders || [],
+          quickNotes: db.quickNotes || '',
+        });
+      }
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

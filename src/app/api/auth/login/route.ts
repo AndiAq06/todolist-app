@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase, saveDatabase } from '@/lib/server-storage';
-import { verifyPassword, createSessionToken, AUTH_COOKIE_NAME } from '@/lib/auth';
+import { verifyPassword, createSessionToken, AUTH_COOKIE_NAME, AUTH_COOKIE_OPTIONS } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { email, password, cachedAccount } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email dan kata sandi wajib diisi.' }, { status: 400 });
@@ -12,7 +12,9 @@ export async function POST(req: NextRequest) {
 
     const cleanEmail = email.trim().toLowerCase();
     const db = getDatabase();
-    let user = (db.users || []).find((u: any) => u.email.toLowerCase() === cleanEmail);
+    if (!db.users) db.users = [];
+
+    let user = db.users.find((u: any) => u.email.toLowerCase() === cleanEmail);
 
     // Auto-seed Todolist App demo user if requested
     if (!user && (cleanEmail === 'demo@todolist.app' || cleanEmail === 'rodiyah@example.com')) {
@@ -26,8 +28,28 @@ export async function POST(req: NextRequest) {
         dailyGoal: 5,
         createdAt: new Date().toISOString(),
       };
-      db.users = [user, ...(db.users || [])];
+      db.users.push(user);
       saveDatabase(db);
+    }
+
+    // SELF-HEALING: If account is missing from /tmp due to Vercel restart,
+    // verify against client cachedAccount vault and restore immediately
+    if (!user && cachedAccount && cachedAccount.email && cachedAccount.email.toLowerCase() === cleanEmail && cachedAccount.passwordHash) {
+      const isMatch = await verifyPassword(password, cachedAccount.passwordHash);
+      if (isMatch) {
+        user = {
+          id: cachedAccount.id || `user-${Date.now()}`,
+          name: cachedAccount.name || 'Pengguna',
+          email: cleanEmail,
+          passwordHash: cachedAccount.passwordHash,
+          title: cachedAccount.title || 'Anggota Produktif',
+          avatarUrl: cachedAccount.avatarUrl || '',
+          dailyGoal: cachedAccount.dailyGoal || 5,
+          createdAt: cachedAccount.createdAt || new Date().toISOString(),
+        };
+        db.users.push(user);
+        saveDatabase(db);
+      }
     }
 
     if (!user) {
@@ -64,16 +86,14 @@ export async function POST(req: NextRequest) {
         title: user.title,
         avatarUrl: user.avatarUrl,
         dailyGoal: user.dailyGoal || 5,
+        passwordHash: user.passwordHash, // for client vault caching
       },
     });
 
     response.cookies.set({
       name: AUTH_COOKIE_NAME,
       value: token,
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      ...AUTH_COOKIE_OPTIONS,
     });
 
     return response;
