@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       email: cleanEmail,
       passwordHash,
       title: 'Anggota Produktif',
-      avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name.trim())}`,
+      avatarUrl: '',
       dailyGoal: 5,
       createdAt: new Date().toISOString(),
     };

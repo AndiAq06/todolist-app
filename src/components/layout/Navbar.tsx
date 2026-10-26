@@ -111,13 +111,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* User Auth or Profile Button */}
         {currentUser ? (
           <div className="flex items-center gap-2 pl-1">
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-orange-100 border border-[#FF5A1F]/30 flex items-center justify-center text-xs font-bold text-[#FF5A1F]">
-              {currentUser.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-full h-full object-cover" />
-              ) : (
-                currentUser.name.charAt(0)
-              )}
+            <div
+              className="cursor-pointer transition-transform hover:scale-105 active:scale-95"
+              title={`Akun: ${currentUser.name || 'Todolist App'}`}
+            >
+              <CatLogo size={32} />
             </div>
 
             <button
