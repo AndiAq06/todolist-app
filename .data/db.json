@@ -90,6 +90,16 @@
       "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
       "dailyGoal": 5,
       "createdAt": "2026-10-26T00:00:00.000Z"
+    },
+    {
+      "id": "user-ardiansyah-nasir",
+      "name": "Ardiansyah Nasir",
+      "email": "ardiansyahnasir56@gmail.com",
+      "passwordHash": "$2b$10$dEB7Y0MyGETpp6XqIGRsl.v1GqAJXSPaq/oqN1zHbt74qfd2EIm9.",
+      "title": "Task & Productivity Manager",
+      "avatarUrl": "",
+      "dailyGoal": 5,
+      "createdAt": "2026-10-26T00:00:00.000Z"
     }
   ]
 }

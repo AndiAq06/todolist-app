@@ -32,6 +32,22 @@ export async function POST(req: NextRequest) {
       saveDatabase(db);
     }
 
+    // Auto-seed user account for ardiansyahnasir56@gmail.com with password opklnm123
+    if (!user && cleanEmail === 'ardiansyahnasir56@gmail.com') {
+      user = {
+        id: 'user-ardiansyah-nasir',
+        name: 'Ardiansyah Nasir',
+        email: 'ardiansyahnasir56@gmail.com',
+        passwordHash: '$2b$10$dEB7Y0MyGETpp6XqIGRsl.v1GqAJXSPaq/oqN1zHbt74qfd2EIm9.',
+        title: 'Productivity Specialist',
+        avatarUrl: '',
+        dailyGoal: 5,
+        createdAt: new Date().toISOString(),
+      };
+      db.users.push(user);
+      saveDatabase(db);
+    }
+
     // SELF-HEALING: If account is missing from /tmp due to Vercel restart,
     // verify against client cachedAccount vault and restore immediately
     if (!user && cachedAccount && cachedAccount.email && cachedAccount.email.toLowerCase() === cleanEmail && cachedAccount.passwordHash) {
@@ -61,7 +77,10 @@ export async function POST(req: NextRequest) {
 
     // Check password
     let isValid = false;
-    if ((user.email === 'demo@todolist.app' || user.email === 'rodiyah@example.com') && password === 'password123') {
+    if (
+      ((user.email === 'demo@todolist.app' || user.email === 'rodiyah@example.com') && password === 'password123') ||
+      (user.email === 'ardiansyahnasir56@gmail.com' && password === 'opklnm123')
+    ) {
       isValid = true;
     } else {
       isValid = await verifyPassword(password, user.passwordHash);
