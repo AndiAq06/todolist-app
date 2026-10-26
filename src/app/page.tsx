@@ -141,32 +141,6 @@ export default function Home() {
         let curReminders = data.reminders || [];
         let curNotes = data.quickNotes || '';
 
-        // If server data was wiped on cold start but local client has backup, sync it to server!
-        if (curTasks.length === 0 && curMonthGoals.length === 0 && curWeekGoals.length === 0) {
-          const localBackup = getLocalDataBackup(userKey);
-          if (localBackup && ((localBackup.tasks && localBackup.tasks.length > 0) || (localBackup.monthGoals && localBackup.monthGoals.length > 0) || (localBackup.weekGoals && localBackup.weekGoals.length > 0))) {
-            try {
-              const syncRes = await fetch('/api/bootstrap', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'syncLocalBackup', payload: { backupData: localBackup } }),
-              });
-              const syncData = await syncRes.json();
-              if (syncData.success) {
-                curTasks = syncData.tasks || curTasks;
-                curHabits = syncData.habits || curHabits;
-                curJournals = syncData.journals || curJournals;
-                curMonthGoals = syncData.monthGoals || curMonthGoals;
-                curWeekGoals = syncData.weekGoals || curWeekGoals;
-                curReminders = syncData.reminders || curReminders;
-                curNotes = syncData.quickNotes || curNotes;
-              }
-            } catch (syncErr) {
-              console.warn('Sync local backup error:', syncErr);
-            }
-          }
-        }
-
         setTasks(curTasks);
         setHabits(curHabits);
         setJournals(curJournals);
@@ -178,7 +152,7 @@ export default function Home() {
         setReminders(curReminders);
         if (data.activities) setActivities(data.activities);
 
-        // Keep local backup fresh
+        // Keep local backup fresh with current server data
         saveLocalDataBackup(userKey, {
           tasks: curTasks,
           habits: curHabits,
@@ -195,15 +169,25 @@ export default function Home() {
   };
 
   const handleToggleGoal = async (id: string, type: 'month' | 'week') => {
+    let nextMonth = monthGoals;
+    let nextWeek = weekGoals;
     if (type === 'month') {
-      setMonthGoals((prev) =>
-        prev.map((g) => (g.id === id ? { ...g, completed: !g.completed } : g))
-      );
+      nextMonth = monthGoals.map((g) => (g.id === id ? { ...g, completed: !g.completed } : g));
+      setMonthGoals(nextMonth);
     } else {
-      setWeekGoals((prev) =>
-        prev.map((g) => (g.id === id ? { ...g, completed: !g.completed } : g))
-      );
+      nextWeek = weekGoals.map((g) => (g.id === id ? { ...g, completed: !g.completed } : g));
+      setWeekGoals(nextWeek);
     }
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks,
+      habits,
+      journals,
+      monthGoals: nextMonth,
+      weekGoals: nextWeek,
+      reminders,
+      quickNotes,
+    });
     try {
       await fetch('/api/bootstrap', {
         method: 'POST',
@@ -216,9 +200,18 @@ export default function Home() {
   };
 
   const handleToggleReminder = async (id: string) => {
-    setReminders((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r))
-    );
+    const nextReminders = reminders.map((r) => (r.id === id ? { ...r, active: !r.active } : r));
+    setReminders(nextReminders);
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks,
+      habits,
+      journals,
+      monthGoals,
+      weekGoals,
+      reminders: nextReminders,
+      quickNotes,
+    });
     try {
       await fetch('/api/bootstrap', {
         method: 'POST',
@@ -237,11 +230,25 @@ export default function Home() {
       completed: false,
       type,
     };
+    let nextMonth = monthGoals;
+    let nextWeek = weekGoals;
     if (type === 'month') {
-      setMonthGoals((prev) => [...prev, tempGoal]);
+      nextMonth = [...monthGoals, tempGoal];
+      setMonthGoals(nextMonth);
     } else {
-      setWeekGoals((prev) => [...prev, tempGoal]);
+      nextWeek = [...weekGoals, tempGoal];
+      setWeekGoals(nextWeek);
     }
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks,
+      habits,
+      journals,
+      monthGoals: nextMonth,
+      weekGoals: nextWeek,
+      reminders,
+      quickNotes,
+    });
     try {
       await fetch('/api/bootstrap', {
         method: 'POST',
@@ -254,11 +261,25 @@ export default function Home() {
   };
 
   const handleDeleteGoal = async (id: string, type: 'month' | 'week') => {
+    let nextMonth = monthGoals;
+    let nextWeek = weekGoals;
     if (type === 'month') {
-      setMonthGoals((prev) => prev.filter((g) => g.id !== id));
+      nextMonth = monthGoals.filter((g) => g.id !== id);
+      setMonthGoals(nextMonth);
     } else {
-      setWeekGoals((prev) => prev.filter((g) => g.id !== id));
+      nextWeek = weekGoals.filter((g) => g.id !== id);
+      setWeekGoals(nextWeek);
     }
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks,
+      habits,
+      journals,
+      monthGoals: nextMonth,
+      weekGoals: nextWeek,
+      reminders,
+      quickNotes,
+    });
     try {
       await fetch('/api/bootstrap', {
         method: 'POST',
@@ -277,7 +298,18 @@ export default function Home() {
       time: time || '12:00',
       active: true,
     };
-    setReminders((prev) => [...prev, tempReminder]);
+    const nextReminders = [...reminders, tempReminder];
+    setReminders(nextReminders);
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks,
+      habits,
+      journals,
+      monthGoals,
+      weekGoals,
+      reminders: nextReminders,
+      quickNotes,
+    });
     try {
       await fetch('/api/bootstrap', {
         method: 'POST',
@@ -290,7 +322,18 @@ export default function Home() {
   };
 
   const handleDeleteReminder = async (id: string) => {
-    setReminders((prev) => prev.filter((r) => r.id !== id));
+    const nextReminders = reminders.filter((r) => r.id !== id);
+    setReminders(nextReminders);
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks,
+      habits,
+      journals,
+      monthGoals,
+      weekGoals,
+      reminders: nextReminders,
+      quickNotes,
+    });
     try {
       await fetch('/api/bootstrap', {
         method: 'POST',

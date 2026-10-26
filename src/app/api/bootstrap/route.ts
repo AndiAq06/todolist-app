@@ -70,10 +70,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'deleteGoal') {
-      const { id, type } = payload;
-      if (type === 'month' && db.monthGoals) {
+      const { id } = payload;
+      if (db.monthGoals) {
         db.monthGoals = db.monthGoals.filter((g) => g.id !== id);
-      } else if (type === 'week' && db.weekGoals) {
+      }
+      if (db.weekGoals) {
         db.weekGoals = db.weekGoals.filter((g) => g.id !== id);
       }
       saveDatabase(db);
