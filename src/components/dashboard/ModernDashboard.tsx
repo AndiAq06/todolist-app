@@ -151,42 +151,13 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
   const completedTasksCount = activeTasks.filter((t) => t.status === 'completed').length;
   const inProgressTasksCount = activeTasks.filter((t) => t.status === 'in_progress').length;
   const pendingTasksCount = activeTasks.filter((t) => t.status === 'todo').length;
-  const totalTasksCount = activeTasks.length || 17;
+  const totalTasksCount = activeTasks.length;
+  const pausedProjectsCount = tasks.filter((t) => t.isArchived).length;
+  const energyProgress = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
 
-  // Display tasks list for Upcoming tasks widget matching design screenshot
+  // Display tasks list for Upcoming tasks widget
   const displayTasks = useMemo(() => {
-    const list = [...activeTasks];
-    const defaultUpcomingTitles = [
-      'Read Little women',
-      'Complete your daily challenge',
-      'Finalize your 303 project',
-      'Prepare for 303 presentation',
-      'Call mom',
-      'Read 310',
-    ];
-    defaultUpcomingTitles.forEach((title, idx) => {
-      if (!list.some((t) => t.title.toLowerCase() === title.toLowerCase())) {
-        list.push({
-          id: `task-seed-${idx}`,
-          title,
-          description: '',
-          status: 'todo',
-          priority: 'normal',
-          category: 'Design Stride',
-          tags: [],
-          dueDate: new Date().toISOString().split('T')[0],
-          isFocus: false,
-          isArchived: false,
-          isDeleted: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          checklists: [],
-          attachments: [],
-          progressLogs: [],
-        });
-      }
-    });
-    return list.slice(0, 6);
+    return activeTasks.slice(0, 6);
   }, [activeTasks]);
 
   // ==========================================
@@ -714,11 +685,11 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
                   My mood: <span className="font-semibold text-gray-600 dark:text-gray-300">Regular</span>
                 </p>
                 <p className="text-[11px] text-gray-400 mt-0.5">
-                  {pendingTasksCount || 4} more tasks to complete
+                  {pendingTasksCount > 0 ? `${pendingTasksCount} tasks to complete` : 'Semua tugas selesai'}
                 </p>
               </div>
 
-              {/* Circular Gauge 40 */}
+              {/* Circular Gauge */}
               <div className="relative w-12 h-12 flex items-center justify-center">
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                   {/* Background ring */}
@@ -729,10 +700,10 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
                     fill="none"
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                   />
-                  {/* Orange progress arc (40%) */}
+                  {/* Orange progress arc */}
                   <path
                     className="text-[#FF5A1F]"
-                    strokeDasharray="40, 100"
+                    strokeDasharray={`${energyProgress}, 100`}
                     strokeWidth="3.5"
                     strokeLinecap="round"
                     stroke="currentColor"
@@ -742,7 +713,7 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                   <span className="text-xs font-black text-gray-900 dark:text-gray-100">
-                    40
+                    {energyProgress}
                   </span>
                 </div>
               </div>
@@ -757,14 +728,14 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
             <div className="flex items-center gap-4 text-xs font-semibold text-gray-800 dark:text-gray-200 mb-3 px-1">
               <div>
                 <span className="text-base font-black text-gray-900 dark:text-gray-100">
-                  {completedTasksCount || 10}
+                  {completedTasksCount}
                 </span>{' '}
                 <span className="text-[11px] text-gray-500">Tasks done</span>
               </div>
               <div className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
               <div>
                 <span className="text-base font-black text-gray-900 dark:text-gray-100">
-                  3
+                  {pausedProjectsCount}
                 </span>{' '}
                 <span className="text-[11px] text-gray-500">Paused projects</span>
               </div>
@@ -780,13 +751,13 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
               </div>
               <div className="bg-gray-100/80 dark:bg-gray-800/60 rounded-2xl p-2.5 text-center">
                 <span className="block text-base font-black text-gray-900 dark:text-gray-100">
-                  {inProgressTasksCount || 7}
+                  {inProgressTasksCount}
                 </span>
                 <span className="text-[10px] text-gray-500">in progress</span>
               </div>
               <div className="bg-gray-100/80 dark:bg-gray-800/60 rounded-2xl p-2.5 text-center">
                 <span className="block text-base font-black text-gray-900 dark:text-gray-100">
-                  {completedTasksCount || 10}
+                  {completedTasksCount}
                 </span>
                 <span className="text-[10px] text-gray-500 capitalize">Done</span>
               </div>
@@ -904,32 +875,38 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
             </div>
 
             <div className="space-y-2">
-              {monthGoals.map((goal, idx) => (
-                <div
-                  key={goal.id}
-                  onClick={() => handleToggleGoalClick(goal.id, 'month')}
-                  className={`flex items-center gap-3 cursor-pointer group ${
-                    idx >= 2 && !goal.completed ? 'opacity-40 hover:opacity-80 transition-opacity' : ''
-                  }`}
-                >
-                  <div
-                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition ${
-                      goal.completed
-                        ? 'bg-gray-400 border-gray-400 text-white'
-                        : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    {goal.completed && <Check size={10} strokeWidth={3} />}
-                  </div>
-                  <span
-                    className={`text-xs font-medium truncate ${
-                      goal.completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'
-                    }`}
-                  >
-                    {goal.title}
-                  </span>
+              {monthGoals.length === 0 ? (
+                <div className="py-7 text-center">
+                  <p className="text-xs text-gray-400">Belum ada target bulanan.</p>
                 </div>
-              ))}
+              ) : (
+                monthGoals.map((goal, idx) => (
+                  <div
+                    key={goal.id}
+                    onClick={() => handleToggleGoalClick(goal.id, 'month')}
+                    className={`flex items-center gap-3 cursor-pointer group ${
+                      idx >= 2 && !goal.completed ? 'opacity-40 hover:opacity-80 transition-opacity' : ''
+                    }`}
+                  >
+                    <div
+                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition ${
+                        goal.completed
+                          ? 'bg-gray-400 border-gray-400 text-white'
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    >
+                      {goal.completed && <Check size={10} strokeWidth={3} />}
+                    </div>
+                    <span
+                      className={`text-xs font-medium truncate ${
+                        goal.completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'
+                      }`}
+                    >
+                      {goal.title}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -943,36 +920,42 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
               </h2>
             </div>
 
-            {/* 3 Horizontal Reminder Cards filling width */}
-            <div className="grid grid-cols-3 gap-2.5">
-              {reminders.slice(0, 3).map((reminder) => (
-                <div
-                  key={reminder.id}
-                  className="bg-gray-50/90 dark:bg-gray-800/60 rounded-2xl p-2.5 flex flex-col justify-between h-28 border border-gray-100 dark:border-gray-700/60 transition hover:border-gray-300 dark:hover:border-gray-600"
-                >
-                  <span className="text-[9px] text-gray-400">...</span>
-                  <p className="text-[11px] font-bold text-gray-800 dark:text-gray-200 leading-tight line-clamp-2 my-auto">
-                    {reminder.title}
-                  </p>
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[10px] text-gray-400 font-medium">
-                      {reminder.time}
-                    </span>
-                    <button
-                      onClick={() => handleToggleReminderClick(reminder.id)}
-                      className={`w-5 h-5 rounded-md flex items-center justify-center transition ${
-                        reminder.active
-                          ? 'bg-[#FF5A1F] text-white shadow-sm'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      }`}
-                      title={reminder.active ? 'Pengingat Aktif' : 'Klik untuk mengaktifkan'}
-                    >
-                      <Bell size={10} />
-                    </button>
+            {/* 3 Horizontal Reminder Cards or Empty State */}
+            {reminders.length === 0 ? (
+              <div className="py-7 text-center">
+                <p className="text-xs text-gray-400">Belum ada pengingat tugas.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2.5">
+                {reminders.slice(0, 3).map((reminder) => (
+                  <div
+                    key={reminder.id}
+                    className="bg-gray-50/90 dark:bg-gray-800/60 rounded-2xl p-2.5 flex flex-col justify-between h-28 border border-gray-100 dark:border-gray-700/60 transition hover:border-gray-300 dark:hover:border-gray-600"
+                  >
+                    <span className="text-[9px] text-gray-400">...</span>
+                    <p className="text-[11px] font-bold text-gray-800 dark:text-gray-200 leading-tight line-clamp-2 my-auto">
+                      {reminder.title}
+                    </p>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        {reminder.time}
+                      </span>
+                      <button
+                        onClick={() => handleToggleReminderClick(reminder.id)}
+                        className={`w-5 h-5 rounded-md flex items-center justify-center transition ${
+                          reminder.active
+                            ? 'bg-[#FF5A1F] text-white shadow-sm'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }`}
+                        title={reminder.active ? 'Pengingat Aktif' : 'Klik untuk mengaktifkan'}
+                      >
+                        <Bell size={10} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -989,32 +972,38 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
             </div>
 
             <div className="space-y-2">
-              {weekGoals.map((goal, idx) => (
-                <div
-                  key={goal.id}
-                  onClick={() => handleToggleGoalClick(goal.id, 'week')}
-                  className={`flex items-center gap-3 cursor-pointer group ${
-                    idx >= 1 && !goal.completed ? 'opacity-40 hover:opacity-80 transition-opacity' : ''
-                  }`}
-                >
-                  <div
-                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition ${
-                      goal.completed
-                        ? 'bg-gray-400 border-gray-400 text-white'
-                        : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    {goal.completed && <Check size={10} strokeWidth={3} />}
-                  </div>
-                  <span
-                    className={`text-xs font-medium truncate ${
-                      goal.completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'
-                    }`}
-                  >
-                    {goal.title}
-                  </span>
+              {weekGoals.length === 0 ? (
+                <div className="py-7 text-center">
+                  <p className="text-xs text-gray-400">Belum ada target mingguan.</p>
                 </div>
-              ))}
+              ) : (
+                weekGoals.map((goal, idx) => (
+                  <div
+                    key={goal.id}
+                    onClick={() => handleToggleGoalClick(goal.id, 'week')}
+                    className={`flex items-center gap-3 cursor-pointer group ${
+                      idx >= 1 && !goal.completed ? 'opacity-40 hover:opacity-80 transition-opacity' : ''
+                    }`}
+                  >
+                    <div
+                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition ${
+                        goal.completed
+                          ? 'bg-gray-400 border-gray-400 text-white'
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    >
+                      {goal.completed && <Check size={10} strokeWidth={3} />}
+                    </div>
+                    <span
+                      className={`text-xs font-medium truncate ${
+                        goal.completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'
+                      }`}
+                    >
+                      {goal.title}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -1030,16 +1019,16 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
         <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex items-center justify-between h-full min-h-[105px]">
           <div className="space-y-1">
             <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">
-              Well done!
+              {completedTasksCount > 0 ? 'Kerja bagus!' : 'Semangat!'}
             </h3>
             <p className="text-[11px] text-gray-400 max-w-[170px]">
-              You completed your morning routine today
+              {completedTasksCount > 0 ? `${completedTasksCount} tugas selesai hari ini` : 'Mulai hari Anda dengan menambah tugas'}
             </p>
             <button
-              onClick={() => onSelectTab('habits')}
+              onClick={() => onSelectTab('tasks')}
               className="text-[11px] font-bold text-gray-700 dark:text-gray-300 hover:text-[#FF5A1F] flex items-center gap-1 pt-1"
             >
-              View details →
+              Lihat tugas →
             </button>
           </div>
 

@@ -19,26 +19,11 @@ export const DEFAULT_PROFILE: UserProfile = {
   theme: 'light',
 };
 
-export const DEFAULT_MONTH_GOALS: GoalItem[] = [
-  { id: 'mg-1', title: 'Read 2 books', completed: true, type: 'month' },
-  { id: 'mg-2', title: 'Complete UX course', completed: true, type: 'month' },
-  { id: 'mg-3', title: 'Eat twice daily', completed: false, type: 'month' },
-  { id: 'mg-4', title: 'Prepare for exams', completed: false, type: 'month' },
-  { id: 'mg-5', title: 'Make 12,000', completed: false, type: 'month' },
-];
+export const DEFAULT_MONTH_GOALS: GoalItem[] = [];
 
-export const DEFAULT_WEEK_GOALS: GoalItem[] = [
-  { id: 'wg-1', title: 'Finish little women', completed: false, type: 'week' },
-  { id: 'wg-2', title: 'Complete week 2 of UX course', completed: false, type: 'week' },
-  { id: 'wg-3', title: 'Eat twice daily', completed: false, type: 'week' },
-  { id: 'wg-4', title: 'Prepare for exams', completed: false, type: 'week' },
-];
+export const DEFAULT_WEEK_GOALS: GoalItem[] = [];
 
-export const DEFAULT_REMINDERS: ReminderItem[] = [
-  { id: 'rem-1', title: 'Complete 303 project', time: '12pm', active: true },
-  { id: 'rem-2', title: 'Work on UX Challenge', time: '2pm', active: false },
-  { id: 'rem-3', title: 'Call mom', time: '6pm', active: false },
-];
+export const DEFAULT_REMINDERS: ReminderItem[] = [];
 
 export const DAILY_AFFIRMATIONS = [
   'Why stop when today might be the day you win?',
