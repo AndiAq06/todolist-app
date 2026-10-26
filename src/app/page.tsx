@@ -151,6 +151,78 @@ export default function Home() {
     }
   };
 
+  const handleAddGoal = async (title: string, type: 'month' | 'week') => {
+    const tempGoal: GoalItem = {
+      id: `${type === 'month' ? 'mg' : 'wg'}-${Date.now()}`,
+      title,
+      completed: false,
+      type,
+    };
+    if (type === 'month') {
+      setMonthGoals((prev) => [...prev, tempGoal]);
+    } else {
+      setWeekGoals((prev) => [...prev, tempGoal]);
+    }
+    try {
+      await fetch('/api/bootstrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'addGoal', payload: { title, type } }),
+      });
+    } catch (err) {
+      console.warn('Add goal error:', err);
+    }
+  };
+
+  const handleDeleteGoal = async (id: string, type: 'month' | 'week') => {
+    if (type === 'month') {
+      setMonthGoals((prev) => prev.filter((g) => g.id !== id));
+    } else {
+      setWeekGoals((prev) => prev.filter((g) => g.id !== id));
+    }
+    try {
+      await fetch('/api/bootstrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'deleteGoal', payload: { id, type } }),
+      });
+    } catch (err) {
+      console.warn('Delete goal error:', err);
+    }
+  };
+
+  const handleAddReminder = async (title: string, time?: string) => {
+    const tempReminder: ReminderItem = {
+      id: `rem-${Date.now()}`,
+      title,
+      time: time || '12:00',
+      active: true,
+    };
+    setReminders((prev) => [...prev, tempReminder]);
+    try {
+      await fetch('/api/bootstrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'addReminder', payload: { title, time } }),
+      });
+    } catch (err) {
+      console.warn('Add reminder error:', err);
+    }
+  };
+
+  const handleDeleteReminder = async (id: string) => {
+    setReminders((prev) => prev.filter((r) => r.id !== id));
+    try {
+      await fetch('/api/bootstrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'deleteReminder', payload: { id } }),
+      });
+    } catch (err) {
+      console.warn('Delete reminder error:', err);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -630,6 +702,10 @@ export default function Home() {
               onAddTask={handleSimpleAddTask}
               onToggleGoal={handleToggleGoal}
               onToggleReminder={handleToggleReminder}
+              onAddGoal={handleAddGoal}
+              onDeleteGoal={handleDeleteGoal}
+              onAddReminder={handleAddReminder}
+              onDeleteReminder={handleDeleteReminder}
               onOpenTaskDetail={setSelectedTaskForDetail}
               onSelectTab={setCurrentTab}
             />

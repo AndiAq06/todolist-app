@@ -24,6 +24,7 @@ import {
   ExternalLink,
   CalendarDays,
   X,
+  Trash2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { format, isSameDay, addMonths, subMonths } from 'date-fns';
@@ -41,6 +42,10 @@ interface ModernDashboardProps {
   onAddTask: (title: string, category?: string, dueDate?: string) => void;
   onToggleGoal: (id: string, type: 'month' | 'week') => void;
   onToggleReminder: (id: string) => void;
+  onAddGoal?: (title: string, type: 'month' | 'week') => void;
+  onDeleteGoal?: (id: string, type: 'month' | 'week') => void;
+  onAddReminder?: (title: string, time?: string) => void;
+  onDeleteReminder?: (id: string) => void;
   onOpenTaskDetail: (task: Task) => void;
   onSelectTab: (tab: any) => void;
 }
@@ -55,6 +60,10 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
   onAddTask,
   onToggleGoal,
   onToggleReminder,
+  onAddGoal,
+  onDeleteGoal,
+  onAddReminder,
+  onDeleteReminder,
   onOpenTaskDetail,
   onSelectTab,
 }) => {
@@ -84,19 +93,19 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
   );
 
   useEffect(() => {
-    if (initialMonthGoals && initialMonthGoals.length > 0) {
+    if (initialMonthGoals) {
       setMonthGoals(initialMonthGoals);
     }
   }, [initialMonthGoals]);
 
   useEffect(() => {
-    if (initialWeekGoals && initialWeekGoals.length > 0) {
+    if (initialWeekGoals) {
       setWeekGoals(initialWeekGoals);
     }
   }, [initialWeekGoals]);
 
   useEffect(() => {
-    if (initialReminders && initialReminders.length > 0) {
+    if (initialReminders) {
       setReminders(initialReminders);
     }
   }, [initialReminders]);
@@ -144,6 +153,67 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
       prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r))
     );
     onToggleReminder(id);
+  };
+
+  // Adding state for Goals & Reminders
+  const [isAddingMonthGoal, setIsAddingMonthGoal] = useState(false);
+  const [newMonthGoalTitle, setNewMonthGoalTitle] = useState('');
+
+  const [isAddingWeekGoal, setIsAddingWeekGoal] = useState(false);
+  const [newWeekGoalTitle, setNewWeekGoalTitle] = useState('');
+
+  const [isAddingReminder, setIsAddingReminder] = useState(false);
+  const [newReminderTitle, setNewReminderTitle] = useState('');
+  const [newReminderTime, setNewReminderTime] = useState('');
+
+  const handleAddMonthGoalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMonthGoalTitle.trim()) return;
+    const title = newMonthGoalTitle.trim();
+    const temp: GoalItem = {
+      id: `mg-${Date.now()}`,
+      title,
+      completed: false,
+      type: 'month',
+    };
+    setMonthGoals((prev) => [...prev, temp]);
+    if (onAddGoal) onAddGoal(title, 'month');
+    setNewMonthGoalTitle('');
+    setIsAddingMonthGoal(false);
+  };
+
+  const handleAddWeekGoalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newWeekGoalTitle.trim()) return;
+    const title = newWeekGoalTitle.trim();
+    const temp: GoalItem = {
+      id: `wg-${Date.now()}`,
+      title,
+      completed: false,
+      type: 'week',
+    };
+    setWeekGoals((prev) => [...prev, temp]);
+    if (onAddGoal) onAddGoal(title, 'week');
+    setNewWeekGoalTitle('');
+    setIsAddingWeekGoal(false);
+  };
+
+  const handleAddReminderSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReminderTitle.trim()) return;
+    const title = newReminderTitle.trim();
+    const time = newReminderTime.trim() || '12:00';
+    const temp: ReminderItem = {
+      id: `rem-${Date.now()}`,
+      title,
+      time,
+      active: true,
+    };
+    setReminders((prev) => [...prev, temp]);
+    if (onAddReminder) onAddReminder(title, time);
+    setNewReminderTitle('');
+    setNewReminderTime('');
+    setIsAddingReminder(false);
   };
 
   // Metrics calculated dynamically
@@ -837,9 +907,15 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
               })}
 
               {activeTasks.length === 0 && (
-                <p className="text-xs text-gray-400 py-4 text-center">
-                  Belum ada tugas upcoming.
-                </p>
+                <div className="py-6 text-center flex flex-col items-center justify-center">
+                  <p className="text-xs text-gray-400 mb-2">Belum ada tugas upcoming.</p>
+                  <button
+                    onClick={() => setIsAddingTask(true)}
+                    className="text-xs font-semibold text-[#FF5A1F] hover:underline flex items-center gap-1 bg-[#FF5A1F]/10 hover:bg-[#FF5A1F]/20 px-3 py-1.5 rounded-xl transition"
+                  >
+                    <Plus size={13} /> Tambah Tugas Baru
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -869,41 +945,84 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
               <h2 className="text-sm font-black text-gray-900 dark:text-gray-100">
                 Month goals:
               </h2>
-              <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                <Pencil size={13} />
+              <button
+                onClick={() => setIsAddingMonthGoal(!isAddingMonthGoal)}
+                className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-1 rounded-lg transition"
+                title="Tambah target bulanan"
+              >
+                <Plus size={16} />
               </button>
             </div>
 
+            {/* Add Month Goal input form */}
+            {isAddingMonthGoal && (
+              <form onSubmit={handleAddMonthGoalSubmit} className="mb-3 flex items-center gap-2">
+                <input
+                  type="text"
+                  autoFocus
+                  value={newMonthGoalTitle}
+                  onChange={(e) => setNewMonthGoalTitle(e.target.value)}
+                  placeholder="Ketik target bulanan & Enter..."
+                  className="flex-1 text-xs px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#FF5A1F]"
+                />
+                <button
+                  type="submit"
+                  className="px-2.5 py-1.5 bg-[#FF5A1F] text-white rounded-xl text-xs font-bold"
+                >
+                  Simpan
+                </button>
+              </form>
+            )}
+
             <div className="space-y-2">
               {monthGoals.length === 0 ? (
-                <div className="py-7 text-center">
-                  <p className="text-xs text-gray-400">Belum ada target bulanan.</p>
+                <div className="py-6 text-center flex flex-col items-center justify-center">
+                  <p className="text-xs text-gray-400 mb-2">Belum ada target bulanan.</p>
+                  <button
+                    onClick={() => setIsAddingMonthGoal(true)}
+                    className="text-xs font-semibold text-[#FF5A1F] hover:underline flex items-center gap-1 bg-[#FF5A1F]/10 hover:bg-[#FF5A1F]/20 px-3 py-1.5 rounded-xl transition"
+                  >
+                    <Plus size={13} /> Tambah Target
+                  </button>
                 </div>
               ) : (
                 monthGoals.map((goal, idx) => (
                   <div
                     key={goal.id}
                     onClick={() => handleToggleGoalClick(goal.id, 'month')}
-                    className={`flex items-center gap-3 cursor-pointer group ${
+                    className={`flex items-center justify-between gap-3 cursor-pointer group ${
                       idx >= 2 && !goal.completed ? 'opacity-40 hover:opacity-80 transition-opacity' : ''
                     }`}
                   >
-                    <div
-                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition ${
-                        goal.completed
-                          ? 'bg-gray-400 border-gray-400 text-white'
-                          : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                    >
-                      {goal.completed && <Check size={10} strokeWidth={3} />}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div
+                        className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition flex-shrink-0 ${
+                          goal.completed
+                            ? 'bg-gray-400 border-gray-400 text-white'
+                            : 'border-gray-300 dark:border-gray-600'
+                        }`}
+                      >
+                        {goal.completed && <Check size={10} strokeWidth={3} />}
+                      </div>
+                      <span
+                        className={`text-xs font-medium truncate ${
+                          goal.completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'
+                        }`}
+                      >
+                        {goal.title}
+                      </span>
                     </div>
-                    <span
-                      className={`text-xs font-medium truncate ${
-                        goal.completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'
-                      }`}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMonthGoals((prev) => prev.filter((g) => g.id !== goal.id));
+                        if (onDeleteGoal) onDeleteGoal(goal.id, 'month');
+                      }}
+                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition p-1"
+                      title="Hapus target"
                     >
-                      {goal.title}
-                    </span>
+                      <Trash2 size={11} />
+                    </button>
                   </div>
                 ))
               )}
@@ -911,28 +1030,81 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
           </div>
         </div>
 
-        {/* CARD 5: Tasks Reminders(3) */}
+        {/* CARD 5: Tasks Reminders(N) */}
         <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between h-full">
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-black text-gray-900 dark:text-gray-100">
                 Tasks Reminders({reminders.length})
               </h2>
+              <button
+                onClick={() => setIsAddingReminder(!isAddingReminder)}
+                className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-1 rounded-lg transition"
+                title="Tambah pengingat"
+              >
+                <Plus size={16} />
+              </button>
             </div>
+
+            {/* Add Reminder input form */}
+            {isAddingReminder && (
+              <form onSubmit={handleAddReminderSubmit} className="mb-3 flex items-center gap-2">
+                <input
+                  type="text"
+                  autoFocus
+                  value={newReminderTitle}
+                  onChange={(e) => setNewReminderTitle(e.target.value)}
+                  placeholder="Ketik tugas pengingat..."
+                  className="flex-1 text-xs px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#FF5A1F]"
+                />
+                <input
+                  type="text"
+                  value={newReminderTime}
+                  onChange={(e) => setNewReminderTime(e.target.value)}
+                  placeholder="10am / 14:00"
+                  className="w-24 text-xs px-2.5 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#FF5A1F]"
+                />
+                <button
+                  type="submit"
+                  className="px-2.5 py-1.5 bg-[#FF5A1F] text-white rounded-xl text-xs font-bold"
+                >
+                  Simpan
+                </button>
+              </form>
+            )}
 
             {/* 3 Horizontal Reminder Cards or Empty State */}
             {reminders.length === 0 ? (
-              <div className="py-7 text-center">
-                <p className="text-xs text-gray-400">Belum ada pengingat tugas.</p>
+              <div className="py-6 text-center flex flex-col items-center justify-center">
+                <p className="text-xs text-gray-400 mb-2">Belum ada pengingat tugas.</p>
+                <button
+                  onClick={() => setIsAddingReminder(true)}
+                  className="text-xs font-semibold text-[#FF5A1F] hover:underline flex items-center gap-1 bg-[#FF5A1F]/10 hover:bg-[#FF5A1F]/20 px-3 py-1.5 rounded-xl transition"
+                >
+                  <Plus size={13} /> Tambah Pengingat
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-2.5">
                 {reminders.slice(0, 3).map((reminder) => (
                   <div
                     key={reminder.id}
-                    className="bg-gray-50/90 dark:bg-gray-800/60 rounded-2xl p-2.5 flex flex-col justify-between h-28 border border-gray-100 dark:border-gray-700/60 transition hover:border-gray-300 dark:hover:border-gray-600"
+                    className="bg-gray-50/90 dark:bg-gray-800/60 rounded-2xl p-2.5 flex flex-col justify-between h-28 border border-gray-100 dark:border-gray-700/60 transition hover:border-gray-300 dark:hover:border-gray-600 relative group"
                   >
-                    <span className="text-[9px] text-gray-400">...</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] text-gray-400">...</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReminders((prev) => prev.filter((r) => r.id !== reminder.id));
+                          if (onDeleteReminder) onDeleteReminder(reminder.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition p-0.5"
+                        title="Hapus pengingat"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
                     <p className="text-[11px] font-bold text-gray-800 dark:text-gray-200 leading-tight line-clamp-2 my-auto">
                       {reminder.title}
                     </p>
@@ -966,41 +1138,84 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
               <h2 className="text-sm font-black text-gray-900 dark:text-gray-100">
                 Week goals:
               </h2>
-              <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                <Pencil size={13} />
+              <button
+                onClick={() => setIsAddingWeekGoal(!isAddingWeekGoal)}
+                className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-1 rounded-lg transition"
+                title="Tambah target mingguan"
+              >
+                <Plus size={16} />
               </button>
             </div>
 
+            {/* Add Week Goal input form */}
+            {isAddingWeekGoal && (
+              <form onSubmit={handleAddWeekGoalSubmit} className="mb-3 flex items-center gap-2">
+                <input
+                  type="text"
+                  autoFocus
+                  value={newWeekGoalTitle}
+                  onChange={(e) => setNewWeekGoalTitle(e.target.value)}
+                  placeholder="Ketik target mingguan & Enter..."
+                  className="flex-1 text-xs px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-[#FF5A1F]"
+                />
+                <button
+                  type="submit"
+                  className="px-2.5 py-1.5 bg-[#FF5A1F] text-white rounded-xl text-xs font-bold"
+                >
+                  Simpan
+                </button>
+              </form>
+            )}
+
             <div className="space-y-2">
               {weekGoals.length === 0 ? (
-                <div className="py-7 text-center">
-                  <p className="text-xs text-gray-400">Belum ada target mingguan.</p>
+                <div className="py-6 text-center flex flex-col items-center justify-center">
+                  <p className="text-xs text-gray-400 mb-2">Belum ada target mingguan.</p>
+                  <button
+                    onClick={() => setIsAddingWeekGoal(true)}
+                    className="text-xs font-semibold text-[#FF5A1F] hover:underline flex items-center gap-1 bg-[#FF5A1F]/10 hover:bg-[#FF5A1F]/20 px-3 py-1.5 rounded-xl transition"
+                  >
+                    <Plus size={13} /> Tambah Target
+                  </button>
                 </div>
               ) : (
                 weekGoals.map((goal, idx) => (
                   <div
                     key={goal.id}
                     onClick={() => handleToggleGoalClick(goal.id, 'week')}
-                    className={`flex items-center gap-3 cursor-pointer group ${
+                    className={`flex items-center justify-between gap-3 cursor-pointer group ${
                       idx >= 1 && !goal.completed ? 'opacity-40 hover:opacity-80 transition-opacity' : ''
                     }`}
                   >
-                    <div
-                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition ${
-                        goal.completed
-                          ? 'bg-gray-400 border-gray-400 text-white'
-                          : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                    >
-                      {goal.completed && <Check size={10} strokeWidth={3} />}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div
+                        className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition flex-shrink-0 ${
+                          goal.completed
+                            ? 'bg-gray-400 border-gray-400 text-white'
+                            : 'border-gray-300 dark:border-gray-600'
+                        }`}
+                      >
+                        {goal.completed && <Check size={10} strokeWidth={3} />}
+                      </div>
+                      <span
+                        className={`text-xs font-medium truncate ${
+                          goal.completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'
+                        }`}
+                      >
+                        {goal.title}
+                      </span>
                     </div>
-                    <span
-                      className={`text-xs font-medium truncate ${
-                        goal.completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'
-                      }`}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setWeekGoals((prev) => prev.filter((g) => g.id !== goal.id));
+                        if (onDeleteGoal) onDeleteGoal(goal.id, 'week');
+                      }}
+                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition p-1"
+                      title="Hapus target"
                     >
-                      {goal.title}
-                    </span>
+                      <Trash2 size={11} />
+                    </button>
                   </div>
                 ))
               )}

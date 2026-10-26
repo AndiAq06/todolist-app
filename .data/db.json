@@ -52,9 +52,30 @@
     }
   ],
   "quickNotes": "",
-  "monthGoals": [],
-  "weekGoals": [],
-  "reminders": [],
+  "monthGoals": [
+    {
+      "id": "mg-1792999113785",
+      "title": "Membaca 2 buku produktivitas",
+      "completed": false,
+      "type": "month"
+    }
+  ],
+  "weekGoals": [
+    {
+      "id": "wg-1792999172892",
+      "title": "Selesaikan Desain UI Mobile",
+      "completed": false,
+      "type": "week"
+    }
+  ],
+  "reminders": [
+    {
+      "id": "rem-1792999146137",
+      "title": "Review Sprint Proyek",
+      "time": "2pm",
+      "active": true
+    }
+  ],
   "tasks": [],
   "habits": [],
   "journals": [],

@@ -49,6 +49,62 @@ export async function POST(req: NextRequest) {
     const { action, payload } = body;
     const db = getDatabase();
 
+    if (action === 'addGoal') {
+      const { title, type } = payload;
+      if (!title || !title.trim()) {
+        return NextResponse.json({ success: false, error: 'Title is required' }, { status: 400 });
+      }
+      const newGoal = {
+        id: `${type === 'month' ? 'mg' : 'wg'}-${Date.now()}`,
+        title: title.trim(),
+        completed: false,
+        type: type as 'month' | 'week',
+      };
+      if (type === 'month') {
+        db.monthGoals = [...(db.monthGoals || []), newGoal];
+      } else {
+        db.weekGoals = [...(db.weekGoals || []), newGoal];
+      }
+      saveDatabase(db);
+      return NextResponse.json({ success: true, newGoal, monthGoals: db.monthGoals, weekGoals: db.weekGoals });
+    }
+
+    if (action === 'deleteGoal') {
+      const { id, type } = payload;
+      if (type === 'month' && db.monthGoals) {
+        db.monthGoals = db.monthGoals.filter((g) => g.id !== id);
+      } else if (type === 'week' && db.weekGoals) {
+        db.weekGoals = db.weekGoals.filter((g) => g.id !== id);
+      }
+      saveDatabase(db);
+      return NextResponse.json({ success: true, monthGoals: db.monthGoals, weekGoals: db.weekGoals });
+    }
+
+    if (action === 'addReminder') {
+      const { title, time } = payload;
+      if (!title || !title.trim()) {
+        return NextResponse.json({ success: false, error: 'Title is required' }, { status: 400 });
+      }
+      const newReminder = {
+        id: `rem-${Date.now()}`,
+        title: title.trim(),
+        time: time && time.trim() ? time.trim() : '12:00',
+        active: true,
+      };
+      db.reminders = [...(db.reminders || []), newReminder];
+      saveDatabase(db);
+      return NextResponse.json({ success: true, newReminder, reminders: db.reminders });
+    }
+
+    if (action === 'deleteReminder') {
+      const { id } = payload;
+      if (db.reminders) {
+        db.reminders = db.reminders.filter((r) => r.id !== id);
+      }
+      saveDatabase(db);
+      return NextResponse.json({ success: true, reminders: db.reminders });
+    }
+
     if (action === 'toggleGoal') {
       const { id, type } = payload;
       if (type === 'month' && db.monthGoals) {
