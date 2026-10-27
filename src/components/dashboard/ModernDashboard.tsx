@@ -1003,13 +1003,11 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
                   </button>
                 </div>
               ) : (
-                monthGoals.map((goal, idx) => (
+                monthGoals.map((goal) => (
                   <div
                     key={goal.id}
                     onClick={() => handleToggleGoalClick(goal.id, 'month')}
-                    className={`flex items-center justify-between gap-3 cursor-pointer group ${
-                      idx >= 2 && !goal.completed ? 'opacity-40 hover:opacity-80 transition-opacity' : ''
-                    }`}
+                    className="flex items-center justify-between gap-3 cursor-pointer group"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div
@@ -1022,8 +1020,8 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
                         {goal.completed && <Check size={10} strokeWidth={3} />}
                       </div>
                       <span
-                        className={`text-xs font-medium truncate ${
-                          goal.completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'
+                        className={`text-xs font-semibold truncate ${
+                          goal.completed ? 'line-through text-gray-400' : 'text-gray-800 dark:text-gray-200'
                         }`}
                       >
                         {goal.title}
@@ -1196,13 +1194,11 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
                   </button>
                 </div>
               ) : (
-                weekGoals.map((goal, idx) => (
+                weekGoals.map((goal) => (
                   <div
                     key={goal.id}
                     onClick={() => handleToggleGoalClick(goal.id, 'week')}
-                    className={`flex items-center justify-between gap-3 cursor-pointer group ${
-                      idx >= 1 && !goal.completed ? 'opacity-40 hover:opacity-80 transition-opacity' : ''
-                    }`}
+                    className="flex items-center justify-between gap-3 cursor-pointer group"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div
@@ -1215,8 +1211,8 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
                         {goal.completed && <Check size={10} strokeWidth={3} />}
                       </div>
                       <span
-                        className={`text-xs font-medium truncate ${
-                          goal.completed ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'
+                        className={`text-xs font-semibold truncate ${
+                          goal.completed ? 'line-through text-gray-400' : 'text-gray-800 dark:text-gray-200'
                         }`}
                       >
                         {goal.title}
