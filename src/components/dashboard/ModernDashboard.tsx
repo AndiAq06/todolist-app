@@ -216,20 +216,6 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
     setIsAddingReminder(false);
   };
 
-  // Metrics calculated dynamically
-  const activeTasks = tasks.filter((t) => !t.isDeleted && !t.isArchived);
-  const completedTasksCount = activeTasks.filter((t) => t.status === 'completed').length;
-  const inProgressTasksCount = activeTasks.filter((t) => t.status === 'in_progress').length;
-  const pendingTasksCount = activeTasks.filter((t) => t.status === 'todo').length;
-  const totalTasksCount = activeTasks.length;
-  const pausedProjectsCount = tasks.filter((t) => t.isArchived).length;
-  const energyProgress = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
-
-  // Display tasks list for Upcoming tasks widget
-  const displayTasks = useMemo(() => {
-    return activeTasks.slice(0, 6);
-  }, [activeTasks]);
-
   // ==========================================
   // REAL DYNAMIC CALENDAR STATE & COMPUTATIONS
   // ==========================================
@@ -239,6 +225,32 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
   const isViewingCurrentMonth = now.getFullYear() === calYear && now.getMonth() === calMonth;
   const currentMonthPrefix = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
   const todayDateStr = format(now, 'yyyy-MM-dd');
+
+  // All active non-deleted, non-archived tasks across whole app
+  const activeTasks = tasks.filter((t) => !t.isDeleted && !t.isArchived);
+  const pausedProjectsCount = tasks.filter((t) => t.isArchived).length;
+
+  // "MY DAY" (HARI INI) EXCLUSIVE TASKS:
+  // Setiap berganti hari, tugas hari kemarin tetap tersimpan aman di database (bisa dilihat di menu Tasks & Kalender),
+  // namun di menu "My day" dikosongkan/reset bersih untuk agenda hari ini.
+  const todayTasks = useMemo(() => {
+    return tasks.filter(
+      (t) => !t.isDeleted && !t.isArchived && t.dueDate === todayDateStr
+    );
+  }, [tasks, todayDateStr]);
+
+  const todayCompletedTasksCount = todayTasks.filter((t) => t.status === 'completed').length;
+  const todayInProgressTasksCount = todayTasks.filter((t) => t.status === 'in_progress').length;
+  const todayPendingTasksCount = todayTasks.filter((t) => t.status === 'todo').length;
+  const todayTotalTasksCount = todayTasks.length;
+  const todayEnergyProgress = todayTotalTasksCount > 0
+    ? Math.round((todayCompletedTasksCount / todayTotalTasksCount) * 100)
+    : 0;
+
+  // Display tasks list for Upcoming tasks (Today's tasks) in My Day
+  const displayTasks = useMemo(() => {
+    return todayTasks.slice(0, 8);
+  }, [todayTasks]);
 
   // Month names
   const monthAbbr = format(calendarMonthDate, 'MMM').toUpperCase();
@@ -398,7 +410,7 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
   const handleAddUpcomingTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUpcomingTitle.trim()) return;
-    onAddTask(newUpcomingTitle.trim(), 'Design Stride');
+    onAddTask(newUpcomingTitle.trim(), 'Design Stride', todayDateStr);
     setNewUpcomingTitle('');
     setIsAddingTask(false);
   };
@@ -755,7 +767,11 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
                   My mood: <span className="font-semibold text-gray-600 dark:text-gray-300">Regular</span>
                 </p>
                 <p className="text-[11px] text-gray-400 mt-0.5">
-                  {pendingTasksCount > 0 ? `${pendingTasksCount} tasks to complete` : 'Semua tugas selesai'}
+                  {todayPendingTasksCount > 0
+                    ? `${todayPendingTasksCount} tasks to complete`
+                    : todayTotalTasksCount === 0
+                    ? 'Belum ada tugas hari ini'
+                    : 'Semua tugas hari ini selesai'}
                 </p>
               </div>
 
@@ -773,7 +789,7 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
                   {/* Orange progress arc */}
                   <path
                     className="text-[#FF5A1F]"
-                    strokeDasharray={`${energyProgress}, 100`}
+                    strokeDasharray={`${todayEnergyProgress}, 100`}
                     strokeWidth="3.5"
                     strokeLinecap="round"
                     stroke="currentColor"
@@ -783,7 +799,7 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                   <span className="text-xs font-black text-gray-900 dark:text-gray-100">
-                    {energyProgress}
+                    {todayEnergyProgress}
                   </span>
                 </div>
               </div>
@@ -798,7 +814,7 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
             <div className="flex items-center gap-4 text-xs font-semibold text-gray-800 dark:text-gray-200 mb-3 px-1">
               <div>
                 <span className="text-base font-black text-gray-900 dark:text-gray-100">
-                  {completedTasksCount}
+                  {todayCompletedTasksCount}
                 </span>{' '}
                 <span className="text-[11px] text-gray-500">Tasks done</span>
               </div>
@@ -815,19 +831,19 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-gray-100/80 dark:bg-gray-800/60 rounded-2xl p-2.5 text-center">
                 <span className="block text-base font-black text-gray-900 dark:text-gray-100">
-                  {totalTasksCount}
+                  {todayTotalTasksCount}
                 </span>
                 <span className="text-[10px] text-gray-500 capitalize">tasks</span>
               </div>
               <div className="bg-gray-100/80 dark:bg-gray-800/60 rounded-2xl p-2.5 text-center">
                 <span className="block text-base font-black text-gray-900 dark:text-gray-100">
-                  {inProgressTasksCount}
+                  {todayInProgressTasksCount}
                 </span>
                 <span className="text-[10px] text-gray-500">in progress</span>
               </div>
               <div className="bg-gray-100/80 dark:bg-gray-800/60 rounded-2xl p-2.5 text-center">
                 <span className="block text-base font-black text-gray-900 dark:text-gray-100">
-                  {completedTasksCount}
+                  {todayCompletedTasksCount}
                 </span>
                 <span className="text-[10px] text-gray-500 capitalize">Done</span>
               </div>
@@ -906,14 +922,15 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
                 );
               })}
 
-              {activeTasks.length === 0 && (
+              {displayTasks.length === 0 && (
                 <div className="py-6 text-center flex flex-col items-center justify-center">
-                  <p className="text-xs text-gray-400 mb-2">Belum ada tugas upcoming.</p>
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-1">Hari baru, lembaran baru!</p>
+                  <p className="text-[11px] text-gray-400 mb-3">Belum ada tugas untuk hari ini.</p>
                   <button
                     onClick={() => setIsAddingTask(true)}
-                    className="text-xs font-semibold text-[#FF5A1F] hover:underline flex items-center gap-1 bg-[#FF5A1F]/10 hover:bg-[#FF5A1F]/20 px-3 py-1.5 rounded-xl transition"
+                    className="text-xs font-bold text-white bg-[#FF5A1F] hover:bg-[#e04e18] px-3.5 py-1.5 rounded-xl shadow-sm transition active:scale-95 flex items-center gap-1.5"
                   >
-                    <Plus size={13} /> Tambah Tugas Baru
+                    <Plus size={13} /> Tambah Tugas Hari Ini
                   </button>
                 </div>
               )}
@@ -921,7 +938,7 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
           </div>
 
           <div className="pt-3 mt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-[11px] text-gray-400">
-            <span>{activeTasks.length} tugas terjadwal</span>
+            <span>{todayTotalTasksCount} tugas hari ini</span>
             <button
               onClick={() => onSelectTab('tasks')}
               className="text-[#FF5A1F] font-bold hover:underline flex items-center gap-0.5"
@@ -1234,10 +1251,12 @@ export const ModernDashboard: React.FC<ModernDashboardProps> = ({
         <div className="bg-white dark:bg-[#1a1b20] rounded-3xl p-5 border border-gray-200/60 dark:border-gray-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex items-center justify-between h-full min-h-[105px]">
           <div className="space-y-1">
             <h3 className="text-sm font-black text-gray-900 dark:text-gray-100">
-              {completedTasksCount > 0 ? 'Kerja bagus!' : 'Semangat!'}
+              {todayCompletedTasksCount > 0 ? 'Kerja bagus!' : 'Semangat!'}
             </h3>
             <p className="text-[11px] text-gray-400 max-w-[170px]">
-              {completedTasksCount > 0 ? `${completedTasksCount} tugas selesai hari ini` : 'Mulai hari Anda dengan menambah tugas'}
+              {todayCompletedTasksCount > 0
+                ? `${todayCompletedTasksCount} tugas selesai hari ini`
+                : 'Mulai hari Anda dengan menambah tugas'}
             </p>
             <button
               onClick={() => onSelectTab('tasks')}
