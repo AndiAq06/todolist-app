@@ -118,6 +118,51 @@ export function getDatabase(): AppData {
   }
 }
 
+const CLOUD_BLOB_URL = 'https://7n4wq1ngsjcb0xnu.public.blob.vercel-storage.com/db.json';
+
+export async function syncToCloudBlob(data: AppData): Promise<boolean> {
+  try {
+    const { put } = await import('@vercel/blob');
+    await put('db.json', JSON.stringify(data, null, 2), {
+      access: 'public',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
+    return true;
+  } catch (err) {
+    console.warn('Vercel Blob sync write error:', err);
+    return false;
+  }
+}
+
+export async function syncFromCloudBlobIfColdStart(): Promise<AppData> {
+  if (memoryCache && (memoryCache.tasks?.length || 0) > 0) {
+    return memoryCache;
+  }
+
+  try {
+    const res = await fetch(CLOUD_BLOB_URL, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    if (res.ok) {
+      const cloudData = await res.json();
+      if (cloudData && Array.isArray(cloudData.users)) {
+        memoryCache = cloudData;
+        try {
+          if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+          fs.writeFileSync(DB_FILE, JSON.stringify(cloudData, null, 2), 'utf-8');
+        } catch {}
+        return cloudData as AppData;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not sync db from Cloud Blob:', err);
+  }
+
+  return getDatabase();
+}
+
 export function saveDatabase(data: AppData): boolean {
   memoryCache = data;
   try {
@@ -125,11 +170,13 @@ export function saveDatabase(data: AppData): boolean {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
-    return true;
   } catch (err) {
     console.warn('Failed to save to disk, kept in memory cache:', err);
-    return false;
   }
+
+  // Fire background cloud blob sync
+  syncToCloudBlob(data).catch((e) => console.warn('Background cloud blob sync error:', e));
+  return true;
 }
 
 export function logActivity(action: ActivityLog['action'], entityType: ActivityLog['entityType'], title: string, details?: string) {

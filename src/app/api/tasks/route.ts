@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase, logActivity } from '@/lib/server-storage';
+import { getDatabase, saveDatabase, logActivity, syncFromCloudBlobIfColdStart, syncToCloudBlob } from '@/lib/server-storage';
 import { Task } from '@/types';
 
 
 export async function GET(req: NextRequest) {
   try {
+    await syncFromCloudBlobIfColdStart();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search')?.toLowerCase() || '';
     const status = searchParams.get('status');
@@ -126,6 +127,7 @@ export async function POST(req: NextRequest) {
 
     db.tasks = [newTask, ...(db.tasks || [])];
     saveDatabase(db);
+    await syncToCloudBlob(db);
 
     logActivity('create', 'task', `Menambahkan tugas baru: ${newTask.title}`);
 

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
-import { getDatabase, saveDatabase, logActivity } from '@/lib/server-storage';
+import { getDatabase, saveDatabase, logActivity, syncFromCloudBlobIfColdStart } from '@/lib/server-storage';
 import { DEFAULT_PROFILE } from '@/lib/constants';
 
 export async function GET(req: NextRequest) {
   try {
+    await syncFromCloudBlobIfColdStart();
     const user = getSessionUser(req);
     const db = getDatabase();
 

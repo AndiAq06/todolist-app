@@ -140,6 +140,18 @@ export default function Home() {
         let curWeekGoals = data.weekGoals || [];
         let curReminders = data.reminders || [];
         let curNotes = data.quickNotes || '';
+        // Self-healing task recovery: if server returned 0 tasks but client vault has tasks, restore them!
+        if (curTasks.length === 0) {
+          const localBackup = getLocalDataBackup(userKey);
+          if (localBackup && Array.isArray(localBackup.tasks) && localBackup.tasks.length > 0) {
+            curTasks = localBackup.tasks;
+            fetch('/api/bootstrap', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'syncLocalBackup', payload: { backupData: { tasks: curTasks } } }),
+            }).catch(() => {});
+          }
+        }
 
         setTasks(curTasks);
         setHabits(curHabits);
@@ -415,10 +427,22 @@ export default function Home() {
     const updated = { ...task, status: newStatus as TaskStatus };
 
     // Optimistic UI update
-    setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)));
+    const nextTasks = tasks.map((t) => (t.id === task.id ? updated : t));
+    setTasks(nextTasks);
     if (selectedTaskForDetail?.id === task.id) {
       setSelectedTaskForDetail(updated);
     }
+
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks: nextTasks,
+      habits,
+      journals,
+      monthGoals,
+      weekGoals,
+      reminders,
+      quickNotes,
+    });
 
     try {
       const res = await fetch(`/api/tasks/${task.id}`, {
@@ -436,6 +460,7 @@ export default function Home() {
   };
 
   const handleSaveTask = async (taskData: Partial<Task>) => {
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
     if (editingTask && editingTask.id) {
       // Update
       const res = await fetch(`/api/tasks/${editingTask.id}`, {
@@ -445,7 +470,17 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.task) {
-        setTasks((prev) => prev.map((t) => (t.id === editingTask.id ? data.task : t)));
+        const nextTasks = tasks.map((t) => (t.id === editingTask.id ? data.task : t));
+        setTasks(nextTasks);
+        saveLocalDataBackup(userKey, {
+          tasks: nextTasks,
+          habits,
+          journals,
+          monthGoals,
+          weekGoals,
+          reminders,
+          quickNotes,
+        });
         if (selectedTaskForDetail?.id === editingTask.id) {
           setSelectedTaskForDetail(data.task);
         }
@@ -459,15 +494,37 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.task) {
-        setTasks((prev) => [data.task, ...prev]);
+        const nextTasks = [data.task, ...tasks];
+        setTasks(nextTasks);
+        saveLocalDataBackup(userKey, {
+          tasks: nextTasks,
+          habits,
+          journals,
+          monthGoals,
+          weekGoals,
+          reminders,
+          quickNotes,
+        });
         confetti({ particleCount: 40, spread: 50, origin: { y: 0.7 } });
       }
     }
   };
 
   const handleUpdateTask = async (updatedTask: Task) => {
-    setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+    const nextTasks = tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t));
+    setTasks(nextTasks);
     setSelectedTaskForDetail(updatedTask);
+
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks: nextTasks,
+      habits,
+      journals,
+      monthGoals,
+      weekGoals,
+      reminders,
+      quickNotes,
+    });
 
     await fetch(`/api/tasks/${updatedTask.id}`, {
       method: 'PUT',
@@ -477,14 +534,39 @@ export default function Home() {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    const nextTasks = tasks.filter((t) => t.id !== taskId);
+    setTasks(nextTasks);
     if (selectedTaskForDetail?.id === taskId) setSelectedTaskForDetail(null);
+
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks: nextTasks,
+      habits,
+      journals,
+      monthGoals,
+      weekGoals,
+      reminders,
+      quickNotes,
+    });
 
     await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
   };
 
   const handlePermanentDelete = async (taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    const nextTasks = tasks.filter((t) => t.id !== taskId);
+    setTasks(nextTasks);
+
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks: nextTasks,
+      habits,
+      journals,
+      monthGoals,
+      weekGoals,
+      reminders,
+      quickNotes,
+    });
+
     await fetch(`/api/tasks/${taskId}?permanent=true`, { method: 'DELETE' });
   };
 
