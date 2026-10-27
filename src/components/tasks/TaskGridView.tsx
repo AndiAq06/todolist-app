@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task } from '@/types';
-import { CheckCircle2, Circle, Calendar, Clock, Camera, FileText, CheckSquare } from 'lucide-react';
+import { CheckCircle2, Circle, Calendar, Clock, Camera, FileText, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface TaskGridViewProps {
@@ -18,9 +18,53 @@ export const TaskGridView: React.FC<TaskGridViewProps> = ({
   onOpenDetail,
   onOpenPhotoLightbox,
 }) => {
+  const [pageSize, setPageSize] = useState<number | 'all'>(6);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tasks.length]);
+
+  const totalTasks = tasks.length;
+  const isAll = pageSize === 'all';
+  const effectivePageSize = isAll ? totalTasks : pageSize;
+  const totalPages = isAll ? 1 : Math.max(1, Math.ceil(totalTasks / effectivePageSize));
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const startIndex = isAll ? 0 : (validCurrentPage - 1) * effectivePageSize;
+  const endIndex = isAll ? totalTasks : Math.min(startIndex + effectivePageSize, totalTasks);
+  const paginatedTasks = isAll ? tasks : tasks.slice(startIndex, endIndex);
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {tasks.map((task) => {
+    <div className="space-y-4">
+      {/* Range Info Bar & View All Toggle */}
+      {totalTasks > 6 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-xs text-gray-500">
+          <span>
+            {isAll
+              ? `Menampilkan semua (${totalTasks}) tugas`
+              : `Menampilkan ${startIndex + 1}-${endIndex} dari ${totalTasks} tugas`}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (isAll) {
+                setPageSize(6);
+                setCurrentPage(1);
+              } else {
+                setPageSize('all');
+              }
+            }}
+            className="text-xs font-bold text-[#FF5A1F] hover:underline px-2.5 py-1 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200/60 dark:border-orange-800/60 transition active:scale-95 cursor-pointer"
+          >
+            {isAll ? 'Bagi per Halaman' : `Lihat Semua (${totalTasks})`}
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {paginatedTasks.map((task) => {
         const isDone = task.status === 'completed';
         const photos = task.attachments.filter((a) => a.fileType === 'image');
         const heroPhoto = photos[0];
@@ -124,6 +168,108 @@ export const TaskGridView: React.FC<TaskGridViewProps> = ({
           </div>
         );
       })}
+      </div>
+
+      {/* Pagination Controls Bar */}
+      {totalTasks > 6 && (
+        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3 px-2">
+          {/* Per Page Selector */}
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span>Per halaman:</span>
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+              {[6, 12, 24].map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => {
+                    setPageSize(size);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                    pageSize === size
+                      ? 'bg-white dark:bg-gray-700 text-[#FF5A1F] shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPageSize('all')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                  pageSize === 'all'
+                    ? 'bg-white dark:bg-gray-700 text-[#FF5A1F] shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                Semua
+              </button>
+            </div>
+          </div>
+
+          {/* Page Buttons (When not in 'all' mode) */}
+          {!isAll && totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={validCurrentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                  if (
+                    totalPages > 7 &&
+                    pageNum !== 1 &&
+                    pageNum !== totalPages &&
+                    Math.abs(pageNum - validCurrentPage) > 1
+                  ) {
+                    if (pageNum === 2 || pageNum === totalPages - 1) {
+                      return (
+                        <span key={pageNum} className="px-1 text-gray-400 text-xs">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  }
+
+                  const isActive = pageNum === validCurrentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 rounded-xl text-xs font-bold transition ${
+                        isActive
+                          ? 'bg-[#FF5A1F] text-white shadow-sm'
+                          : 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                disabled={validCurrentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="p-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                title="Halaman Berikutnya"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

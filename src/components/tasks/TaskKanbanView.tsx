@@ -89,7 +89,7 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
             </div>
 
             {/* Task Cards Column */}
-            <div className="flex-1 space-y-3">
+            <div className="flex-1 max-h-[580px] overflow-y-auto pr-1 space-y-3">
               {columnTasks.map((task) => (
                 <div
                   key={task.id}
