@@ -51,14 +51,16 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={onBulkComplete}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FF5A1F] hover:bg-[#e54c14] text-white rounded-xl text-xs font-semibold shadow-sm transition"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FF5A1F] hover:bg-[#e54c14] text-white rounded-xl text-xs font-semibold shadow-sm transition active:scale-95 cursor-pointer"
             >
               <CheckCheck size={14} /> Tandai Selesai
             </button>
             <button
+              type="button"
               onClick={onBulkDelete}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold shadow-sm transition active:scale-95 cursor-pointer"
             >
               <Trash2 size={14} /> Hapus
             </button>

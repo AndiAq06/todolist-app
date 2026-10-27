@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase, logActivity } from '@/lib/server-storage';
+import { getDatabase, saveDatabase, logActivity, syncFromCloudBlobIfColdStart, syncToCloudBlob } from '@/lib/server-storage';
 
 
 export async function POST(req: NextRequest) {
   try {
+    await syncFromCloudBlobIfColdStart();
     const { action, taskIds, category } = await req.json();
 
     if (!Array.isArray(taskIds) || taskIds.length === 0) {
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
     }
 
     saveDatabase(db);
+    await syncToCloudBlob(db);
     return NextResponse.json({ success: true, count: affectedCount });
   } catch (error) {
     return NextResponse.json({ error: 'Gagal memproses aksi massal' }, { status: 500 });

@@ -624,26 +624,70 @@ export default function Home() {
   // Bulk Actions
   const handleBulkComplete = async () => {
     if (selectedTaskIds.length === 0) return;
-    confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
-    await fetch('/api/tasks/bulk', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'complete', taskIds: selectedTaskIds }),
-    });
+    const idsToComplete = [...selectedTaskIds];
     setSelectedTaskIds([]);
-    await fetchAllData();
+    confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
+
+    // Optimistic UI update
+    const nextTasks = tasks.map((t) =>
+      idsToComplete.includes(t.id) ? { ...t, status: 'completed' as TaskStatus, completedAt: new Date().toISOString() } : t
+    );
+    setTasks(nextTasks);
+
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks: nextTasks,
+      habits,
+      journals,
+      monthGoals,
+      weekGoals,
+      reminders,
+      quickNotes,
+    });
+
+    try {
+      await fetch('/api/tasks/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'complete', taskIds: idsToComplete }),
+      });
+      await fetchAllData();
+    } catch (err) {
+      console.error('Failed to bulk complete tasks:', err);
+    }
   };
 
   const handleBulkDelete = async () => {
     if (selectedTaskIds.length === 0) return;
-    if (confirm(`Pindahkan ${selectedTaskIds.length} tugas ke tempat sampah?`)) {
+    const idsToDelete = [...selectedTaskIds];
+    setSelectedTaskIds([]);
+
+    // Optimistic UI update: instantly move selected tasks to trash
+    const nextTasks = tasks.map((t) =>
+      idsToDelete.includes(t.id) ? { ...t, isDeleted: true, deletedAt: new Date().toISOString() } : t
+    );
+    setTasks(nextTasks);
+
+    const userKey = currentUser?.id || currentUser?.email || 'default_user';
+    saveLocalDataBackup(userKey, {
+      tasks: nextTasks,
+      habits,
+      journals,
+      monthGoals,
+      weekGoals,
+      reminders,
+      quickNotes,
+    });
+
+    try {
       await fetch('/api/tasks/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', taskIds: selectedTaskIds }),
+        body: JSON.stringify({ action: 'delete', taskIds: idsToDelete }),
       });
-      setSelectedTaskIds([]);
       await fetchAllData();
+    } catch (err) {
+      console.error('Failed to bulk delete tasks:', err);
     }
   };
 
