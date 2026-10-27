@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase } from '@/lib/server-storage';
 import { getSessionUser } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     const sessionUser = getSessionUser(req);
 
     const profile = sessionUser
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     const sessionUser = getSessionUser(req);
 
     if (body.profile) {
@@ -70,9 +70,10 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
     return NextResponse.json({ success: true, profile: returnProfile, quickNotes: db.quickNotes });
   } catch (error) {
     return NextResponse.json({ error: 'Gagal memperbarui data profil' }, { status: 500 });
   }
 }
+

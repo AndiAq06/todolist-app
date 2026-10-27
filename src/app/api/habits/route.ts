@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase, logActivity } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase, logActivity } from '@/lib/server-storage';
 import { Habit } from '@/types';
 
 
@@ -57,7 +57,7 @@ function calculateStreak(logs: Record<string, boolean>): { streak: number; bestS
 
 export async function GET() {
   try {
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     return NextResponse.json({ success: true, habits: db.habits || [] });
   } catch (error) {
     return NextResponse.json({ error: 'Gagal memuat kebiasaan' }, { status: 500 });
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nama kebiasaan wajib diisi' }, { status: 400 });
     }
 
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
 
     const newHabit: Habit = {
       id: `habit-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     };
 
     db.habits = [...(db.habits || []), newHabit];
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
 
     logActivity('create', 'habit', `Membuat kebiasaan baru: ${newHabit.title}`);
 
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const { id, date, completed } = await req.json();
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     const habit = (db.habits || []).find(h => h.id === id);
 
     if (!habit) {
@@ -119,7 +119,7 @@ export async function PUT(req: NextRequest) {
     habit.streak = streak;
     habit.bestStreak = Math.max(habit.bestStreak || 0, bestStreak);
 
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
 
     if (completed) {
       logActivity('habit_done', 'habit', `Menyelesaikan kebiasaan: ${habit.title} (${habit.streak} hari streak! 🔥)`);
@@ -140,10 +140,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID kebiasaan wajib diisi' }, { status: 400 });
     }
 
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     const habit = db.habits.find(h => h.id === id);
     db.habits = (db.habits || []).filter(h => h.id !== id);
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
 
     if (habit) {
       logActivity('delete', 'habit', `Menghapus kebiasaan: ${habit.title}`);

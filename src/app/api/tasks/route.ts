@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase, logActivity, syncFromCloudBlobIfColdStart, syncToCloudBlob } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase, logActivity } from '@/lib/server-storage';
 import { Task } from '@/types';
 
 
 export async function GET(req: NextRequest) {
   try {
-    await syncFromCloudBlobIfColdStart();
+    const db = await getSyncedDatabase();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search')?.toLowerCase() || '';
     const status = searchParams.get('status');
@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
     const isDeleted = searchParams.get('isDeleted') === 'true';
     const sortBy = searchParams.get('sortBy') || 'dueDate'; // dueDate, priority, createdAt, title
 
-    const db = getDatabase();
     let tasks = db.tasks || [];
 
     // Filter by deletion/archive state
@@ -90,7 +89,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Judul tugas wajib diisi' }, { status: 400 });
     }
 
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
 
     const newTask: Task = {
       id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -126,8 +125,7 @@ export async function POST(req: NextRequest) {
     }
 
     db.tasks = [newTask, ...(db.tasks || [])];
-    saveDatabase(db);
-    await syncToCloudBlob(db);
+    await saveAndSyncDatabase(db);
 
     logActivity('create', 'task', `Menambahkan tugas baru: ${newTask.title}`);
 

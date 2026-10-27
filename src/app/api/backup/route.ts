@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase, logActivity } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase, logActivity } from '@/lib/server-storage';
 import { AppData } from '@/types';
 
 
 // GET: Export entire database as JSON
 export async function GET() {
   try {
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     return new NextResponse(JSON.stringify(db, null, 2), {
       status: 200,
       headers: {
@@ -32,8 +32,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     const updatedDb: AppData = {
+      ...db,
       profile: importedData.profile || db.profile,
       categories: importedData.categories || db.categories,
       tasks: importedData.tasks,
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
       quickNotes: importedData.quickNotes || db.quickNotes || '',
     };
 
-    saveDatabase(updatedDb);
+    await saveAndSyncDatabase(updatedDb);
     logActivity('update', 'task', `Berhasil memulihkan ${importedData.tasks.length} tugas dari file backup`);
 
     return NextResponse.json({
@@ -54,3 +55,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Gagal memproses file import' }, { status: 500 });
   }
 }
+

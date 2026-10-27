@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase, logActivity } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase, logActivity } from '@/lib/server-storage';
 import { ProgressLog } from '@/types';
 
 
@@ -15,7 +15,7 @@ export async function POST(
       return NextResponse.json({ error: 'Catatan progres tidak boleh kosong' }, { status: 400 });
     }
 
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     const taskIndex = db.tasks.findIndex(t => t.id === id);
 
     if (taskIndex === -1) {
@@ -43,7 +43,7 @@ export async function POST(
       }
     }
 
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
     logActivity('update', 'task', `Menambahkan jurnal progres pada tugas: ${task.title}`);
 
     return NextResponse.json({ success: true, progressLog: newLog, task });
@@ -51,3 +51,4 @@ export async function POST(
     return NextResponse.json({ error: 'Gagal menambahkan log progres' }, { status: 500 });
   }
 }
+

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase } from '@/lib/server-storage';
 import { createSessionToken, AUTH_COOKIE_NAME, AUTH_COOKIE_OPTIONS, getSessionUser } from '@/lib/auth';
 import { UserAccount } from '@/types';
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = cachedAccount.email.trim().toLowerCase();
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     if (!db.users) db.users = [];
 
     let user = db.users.find((u) => u.email.toLowerCase() === cleanEmail || u.id === cachedAccount.id);
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         createdAt: cachedAccount.createdAt || new Date().toISOString(),
       };
       db.users.push(user);
-      saveDatabase(db);
+      await saveAndSyncDatabase(db);
     }
 
     const token = createSessionToken(user);

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase } from '@/lib/server-storage';
 import { Category } from '@/types';
 
 
 export async function GET() {
   try {
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     return NextResponse.json({ success: true, categories: db.categories || [] });
   } catch (error) {
     return NextResponse.json({ error: 'Gagal memuat kategori' }, { status: 500 });
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nama kategori wajib diisi' }, { status: 400 });
     }
 
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     const newCat: Category = {
       id: `cat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       name: name.trim(),
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     };
 
     db.categories = [...(db.categories || []), newCat];
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
 
     return NextResponse.json({ success: true, category: newCat });
   } catch (error) {
@@ -46,7 +46,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID kategori wajib diisi' }, { status: 400 });
     }
 
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     const cat = db.categories.find(c => c.id === id);
 
     // Reassign tasks using this category to "Lainnya"
@@ -59,10 +59,11 @@ export async function DELETE(req: NextRequest) {
     }
 
     db.categories = (db.categories || []).filter(c => c.id !== id);
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
 
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: 'Gagal menghapus kategori' }, { status: 500 });
   }
 }
+

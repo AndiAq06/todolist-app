@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
-import { getDatabase, saveDatabase, logActivity, syncFromCloudBlobIfColdStart } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase, logActivity } from '@/lib/server-storage';
 import { DEFAULT_PROFILE } from '@/lib/constants';
 
 export async function GET(req: NextRequest) {
   try {
-    await syncFromCloudBlobIfColdStart();
+    const db = await getSyncedDatabase();
     const user = getSessionUser(req);
-    const db = getDatabase();
 
     const activeTasks = (db.tasks || []).filter((t) => !t.isDeleted && !t.isArchived);
 
@@ -48,7 +47,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action, payload } = body;
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
 
     if (action === 'addGoal') {
       const { title, type } = payload;
@@ -66,7 +65,7 @@ export async function POST(req: NextRequest) {
       } else {
         db.weekGoals = [...(db.weekGoals || []), newGoal];
       }
-      saveDatabase(db);
+      await saveAndSyncDatabase(db);
       return NextResponse.json({ success: true, newGoal, monthGoals: db.monthGoals, weekGoals: db.weekGoals });
     }
 
@@ -78,7 +77,7 @@ export async function POST(req: NextRequest) {
       if (db.weekGoals) {
         db.weekGoals = db.weekGoals.filter((g) => g.id !== id);
       }
-      saveDatabase(db);
+      await saveAndSyncDatabase(db);
       return NextResponse.json({ success: true, monthGoals: db.monthGoals, weekGoals: db.weekGoals });
     }
 
@@ -94,7 +93,7 @@ export async function POST(req: NextRequest) {
         active: true,
       };
       db.reminders = [...(db.reminders || []), newReminder];
-      saveDatabase(db);
+      await saveAndSyncDatabase(db);
       return NextResponse.json({ success: true, newReminder, reminders: db.reminders });
     }
 
@@ -103,7 +102,7 @@ export async function POST(req: NextRequest) {
       if (db.reminders) {
         db.reminders = db.reminders.filter((r) => r.id !== id);
       }
-      saveDatabase(db);
+      await saveAndSyncDatabase(db);
       return NextResponse.json({ success: true, reminders: db.reminders });
     }
 
@@ -114,7 +113,7 @@ export async function POST(req: NextRequest) {
       } else if (type === 'week' && db.weekGoals) {
         db.weekGoals = db.weekGoals.map((g) => (g.id === id ? { ...g, completed: !g.completed } : g));
       }
-      saveDatabase(db);
+      await saveAndSyncDatabase(db);
       return NextResponse.json({ success: true, monthGoals: db.monthGoals, weekGoals: db.weekGoals });
     }
 
@@ -123,7 +122,7 @@ export async function POST(req: NextRequest) {
       if (db.reminders) {
         db.reminders = db.reminders.map((r) => (r.id === id ? { ...r, active: !r.active } : r));
       }
-      saveDatabase(db);
+      await saveAndSyncDatabase(db);
       return NextResponse.json({ success: true, reminders: db.reminders });
     }
 
@@ -160,7 +159,7 @@ export async function POST(req: NextRequest) {
           changed = true;
         }
         if (changed) {
-          saveDatabase(db);
+          await saveAndSyncDatabase(db);
         }
         return NextResponse.json({
           success: true,
@@ -180,3 +179,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+

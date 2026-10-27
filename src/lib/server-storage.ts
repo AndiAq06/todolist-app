@@ -135,32 +135,56 @@ export async function syncToCloudBlob(data: AppData): Promise<boolean> {
   }
 }
 
-export async function syncFromCloudBlobIfColdStart(): Promise<AppData> {
-  if (memoryCache && (memoryCache.tasks?.length || 0) > 0) {
+let hasHydratedFromCloud = false;
+
+export async function getSyncedDatabase(): Promise<AppData> {
+  if (!hasHydratedFromCloud) {
+    try {
+      const res = await fetch(CLOUD_BLOB_URL, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      if (res.ok) {
+        const cloudData = await res.json();
+        if (cloudData && Array.isArray(cloudData.users)) {
+          memoryCache = cloudData;
+          hasHydratedFromCloud = true;
+          try {
+            if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+            fs.writeFileSync(DB_FILE, JSON.stringify(cloudData, null, 2), 'utf-8');
+          } catch {}
+          return cloudData as AppData;
+        }
+      }
+    } catch (err) {
+      console.warn('Could not sync db from Cloud Blob:', err);
+    }
+  }
+
+  if (memoryCache) {
     return memoryCache;
   }
+  return getDatabase();
+}
 
+export async function syncFromCloudBlobIfColdStart(): Promise<AppData> {
+  return getSyncedDatabase();
+}
+
+export async function saveAndSyncDatabase(data: AppData): Promise<boolean> {
+  memoryCache = data;
   try {
-    const res = await fetch(CLOUD_BLOB_URL, {
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache' },
-    });
-    if (res.ok) {
-      const cloudData = await res.json();
-      if (cloudData && Array.isArray(cloudData.users)) {
-        memoryCache = cloudData;
-        try {
-          if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-          fs.writeFileSync(DB_FILE, JSON.stringify(cloudData, null, 2), 'utf-8');
-        } catch {}
-        return cloudData as AppData;
-      }
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
     }
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
-    console.warn('Could not sync db from Cloud Blob:', err);
+    console.warn('Failed to save to disk, kept in memory cache:', err);
   }
 
-  return getDatabase();
+  // In Vercel serverless functions, background unawaited promises are frozen!
+  // Awaiting syncToCloudBlob guarantees data is safely committed to cloud storage before response is sent.
+  return await syncToCloudBlob(data);
 }
 
 export function saveDatabase(data: AppData): boolean {
@@ -180,7 +204,7 @@ export function saveDatabase(data: AppData): boolean {
 }
 
 export function logActivity(action: ActivityLog['action'], entityType: ActivityLog['entityType'], title: string, details?: string) {
-  const db = getDatabase();
+  const db = memoryCache || getDatabase();
   const newLog: ActivityLog = {
     id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     timestamp: new Date().toISOString(),
@@ -192,3 +216,4 @@ export function logActivity(action: ActivityLog['action'], entityType: ActivityL
   db.activities = [newLog, ...(db.activities || [])].slice(0, 50); // Keep last 50 activities
   saveDatabase(db);
 }
+

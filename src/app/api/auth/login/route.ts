@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase } from '@/lib/server-storage';
 import { verifyPassword, createSessionToken, AUTH_COOKIE_NAME, AUTH_COOKIE_OPTIONS } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     if (!db.users) db.users = [];
 
     let user = db.users.find((u: any) => u.email.toLowerCase() === cleanEmail);
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         createdAt: new Date().toISOString(),
       };
       db.users.push(user);
-      saveDatabase(db);
+      await saveAndSyncDatabase(db);
     }
 
     // Auto-seed user account for ardiansyahnasir56@gmail.com with password opklnm123
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
         createdAt: new Date().toISOString(),
       };
       db.users.push(user);
-      saveDatabase(db);
+      await saveAndSyncDatabase(db);
     }
 
     // SELF-HEALING: If account is missing from /tmp due to Vercel restart,
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
           createdAt: cachedAccount.createdAt || new Date().toISOString(),
         };
         db.users.push(user);
-        saveDatabase(db);
+        await saveAndSyncDatabase(db);
       }
     }
 

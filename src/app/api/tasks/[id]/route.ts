@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase, logActivity } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase, logActivity } from '@/lib/server-storage';
 import { Task } from '@/types';
 
 
@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     const task = db.tasks.find(t => t.id === id);
 
     if (!task) {
@@ -29,7 +29,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     const taskIndex = db.tasks.findIndex(t => t.id === id);
 
     if (taskIndex === -1) {
@@ -56,7 +56,7 @@ export async function PUT(
     }
 
     db.tasks[taskIndex] = updatedTask;
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
 
     return NextResponse.json({ success: true, task: updatedTask });
   } catch (error) {
@@ -74,7 +74,7 @@ export async function DELETE(
     const { searchParams } = new URL(req.url);
     const permanent = searchParams.get('permanent') === 'true';
 
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     const taskIndex = db.tasks.findIndex(t => t.id === id);
 
     if (taskIndex === -1) {
@@ -93,9 +93,10 @@ export async function DELETE(
       logActivity('delete', 'task', `Memindahkan tugas ke Tempat Sampah: ${taskTitle}`);
     }
 
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
     return NextResponse.json({ success: true, message: 'Tugas berhasil diproses' });
   } catch (error) {
     return NextResponse.json({ error: 'Gagal menghapus tugas' }, { status: 500 });
   }
 }
+

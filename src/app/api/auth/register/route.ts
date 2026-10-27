@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase, logActivity } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase, logActivity } from '@/lib/server-storage';
 import { hashPassword, createSessionToken, AUTH_COOKIE_NAME, AUTH_COOKIE_OPTIONS } from '@/lib/auth';
 import { UserAccount } from '@/types';
 
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     if (!db.users) db.users = [];
 
     const existingUser = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     };
 
     db.users.push(newUser);
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
 
     logActivity('create', 'task', `Pengguna baru terdaftar: ${newUser.name} (${newUser.email})`);
 

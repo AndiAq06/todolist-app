@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase, saveDatabase, logActivity } from '@/lib/server-storage';
+import { getSyncedDatabase, saveAndSyncDatabase, logActivity } from '@/lib/server-storage';
 import { DailyJournal } from '@/types';
 
 
@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     const date = searchParams.get('date');
     const search = searchParams.get('search')?.toLowerCase() || '';
 
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     let journals = db.journals || [];
 
     if (date) {
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Judul jurnal wajib diisi' }, { status: 400 });
     }
 
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     if (!db.journals) db.journals = [];
 
     const existingIndex = db.journals.findIndex(j => (body.id && j.id === body.id) || j.date === body.date);
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       logActivity('journal_saved', 'journal', `Menulis Jurnal Harian: ${journalData.title}`);
     }
 
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
     return NextResponse.json({ success: true, journal: journalData });
   } catch (error) {
     return NextResponse.json({ error: 'Gagal menyimpan jurnal harian' }, { status: 500 });
@@ -87,9 +87,9 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID jurnal diperlukan' }, { status: 400 });
     }
 
-    const db = getDatabase();
+    const db = await getSyncedDatabase();
     db.journals = (db.journals || []).filter(j => j.id !== id);
-    saveDatabase(db);
+    await saveAndSyncDatabase(db);
 
     logActivity('delete', 'journal', 'Menghapus catatan jurnal');
 
@@ -98,3 +98,4 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Gagal menghapus jurnal' }, { status: 500 });
   }
 }
+
